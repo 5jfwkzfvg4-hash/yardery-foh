@@ -25,12 +25,13 @@ In the new repo open `index.html` → pencil icon → near the top, find `window
 | `timeZone` | `'America/New_York'` | e.g. `'America/Chicago'` for Central time |
 | `dayCutoffHour` | `5` | before this hour still counts as the previous day |
 | `firebase` | `{apiKey:'…', …}` | option A: leave Sanford's; option B: paste the new project's config |
+| `managers` | `['device id', …]` | the store's manager phones (step 4) |
 Click **Commit changes**.
 
 ### 4. Check it
 1. Open the new link on two phones, enter a first name on each.
 2. Check a task on one: it should show on the other within a few seconds. Uncheck it again.
-3. Add the store's managers (README → "Make someone a manager", using the new `locationId`).
+3. Add the store's managers (README → "Make someone a manager"; in the rules add a line like `'orlando': ['id1']`).
 4. Outside Florida? The Food Code links point to Florida's adopted code (`CODE_URL` in `index.html`); swap in the state's.
 
 ### Set up Firebase (only for option B, or the very first store)

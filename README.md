@@ -20,12 +20,15 @@ New task: copy a whole line, give it a **new** id (lowercase letters, numbers an
 Photo tags are the `PHOTO` list; Food Code links are the `['3-302.12']` part.
 
 ## Make someone a manager (can uncheck anyone's task)
-1. Have them open the staff link once on their phone and enter their first name.
+1. Have them open the staff link on their phone, enter their first name and check any task.
 2. Firebase console → **Firestore Database** → **Data** → `locations` → `sanford` → `devices`.
-   Find the document whose `name` is theirs and copy its **document ID** (their device id).
-3. Go back to `sanford`, click **+ Start collection**, Collection ID `managers`, Document ID = the copied id,
-   add a field `name` (string) = their name, **Save**. (After the first one, just **+ Add document** inside `managers`.)
-4. To remove a manager, delete that document. New phone = new device id, so repeat on a new phone.
+   Tap the entry whose panel shows their `name`, and copy its ID (their device id).
+3. Add the id in two places (or send it to Claude):
+   - `firestore.rules`, in `managerIds()`: `'sanford': ['id1', 'id2']`. Then paste the whole file into
+     Firebase → **Firestore Database** → **Rules** → **Publish**.
+   - `index.html`, in the config block's `managers:[ ]` list (so their phone knows to allow it).
+4. To remove a manager, delete the id from both places and publish the rules again.
+   A new phone (or a cleared browser) gets a new device id, so repeat for it.
 
 ## Where the records are
 Firestore → `locations/{locationId}/days/{date}/checks/{taskId}` and `.../weeks/{Monday's date}/checks/{taskId}`.

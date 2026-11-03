@@ -32,6 +32,11 @@ await t('another employee cannot uncheck it', assertFails(deleteDoc(doc(B, P + '
 await t('the person who checked it can uncheck it', assertSucceeds(deleteDoc(doc(A, P + 'o-dust'))));
 await setDoc(doc(A, P + 'o-dust'), check('uidA', 'o-dust'));
 await t('a manager can uncheck anyone', assertSucceeds(deleteDoc(doc(M, P + 'o-dust'))));
+await setDoc(doc(A, P + 'o-ice'), check('uidA', 'o-ice'));
+const L = env.authenticatedContext('TjGZ7fcbmAgo4y2skvQPfuH4fJB2').firestore();
+await t('a manager listed in the rules (Clay) can uncheck anyone', assertSucceeds(deleteDoc(doc(L, P + 'o-ice'))));
+await setDoc(doc(A, 'locations/orlando/days/2026-11-03/checks/o-ice'), check('uidA', 'o-ice'));
+await t("a listed manager is only a manager at his own location", assertFails(deleteDoc(doc(L, 'locations/orlando/days/2026-11-03/checks/o-ice'))));
 await t('nobody can make themselves a manager', assertFails(setDoc(doc(A, 'locations/sanford/managers/uidA'), {name: 'Ana'})));
 await t('phone can see if it is a manager', assertSucceeds(getDoc(doc(A, 'locations/sanford/managers/uidA'))));
 await t('phone cannot read the manager list', assertFails(getDocs(collection(A, 'locations/sanford/managers'))));

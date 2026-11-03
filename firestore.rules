@@ -6,12 +6,20 @@ rules_version = '2';
 // - Anyone can check a task off, only as themselves (their own device id, the real server time).
 // - Only the person who checked a task, or a manager, can uncheck it.
 // - Nobody can edit a check, or delete a day or week; old days and weeks stay as the record.
-// - Managers are added only in the Firebase console: locations/{locationId}/managers/{their device id}.
+// - Managers: the managerIds() list below (or a locations/{locationId}/managers/{device id} document added in the console).
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
+    // MANAGERS: device ids per location (copy from Firestore > Data > locations > {location} > devices).
+    // Keep in step with "managers" in the page's FOH_CONFIG. After editing, paste this file into Firebase > Rules > Publish.
+    function managerIds() {
+      return {
+        'sanford': ['TjGZ7fcbmAgo4y2skvQPfuH4fJB2']   // Clay
+      };
+    }
     function isManager(loc) {
-      return exists(/databases/$(database)/documents/locations/$(loc)/managers/$(request.auth.uid));
+      return request.auth.uid in managerIds().get(loc, [])
+        || exists(/databases/$(database)/documents/locations/$(loc)/managers/$(request.auth.uid));
     }
     function validCheck(task) {
       let d = request.resource.data;
