@@ -1,0 +1,13 @@
+{
+  "name": "yardery-foh",
+  "private": true,
+  "description": "Checks for the FOH page. Not needed to run the site.",
+  "scripts": {
+    "test": "firebase emulators:exec --only auth,firestore --project demo-yardery \"node tests/rules.test.mjs && node tests/browser.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "13.1.0",
+    "firebase-tools": "^15.0.0"
+  }
+}

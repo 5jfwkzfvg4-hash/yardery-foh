@@ -5,6 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>FOH</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<script>
+/* ===== LOCATION CONFIG: the only part a new store changes (see NEW-LOCATION.md) =====
+   These Firebase values are safe to be public: they only say WHICH Firebase project to talk to.
+   The security rules (firestore.rules) are what decide who can read and write.
+   Never put passwords, pay, SSNs, bank details or private keys anywhere in this site. */
+window.FOH_CONFIG={
+  locationName:'The Yardery',       // shown at the top of the page
+  locationId:'sanford',             // lowercase letters, numbers, dashes. Each store's checks are saved under its own id.
+  timeZone:'America/New_York',      // the store's time zone
+  dayCutoffHour:5,                  // before 5 AM still counts as the previous day, to match the close
+  firebase:{                        // paste from Firebase: Project settings > Your apps > SDK setup and configuration > Config
+    apiKey:'',
+    authDomain:'',
+    projectId:'',
+    storageBucket:'',
+    messagingSenderId:'',
+    appId:''
+  },
+  appCheckSiteKey:''                // optional extra lock (reCAPTCHA v3 site key); leave empty unless set up
+};
+</script>
 <meta name="format-detection" content="telephone=no">
 <meta property="og:title" content="FOH">
 <meta property="og:description" content="The Yardery FOH daily and weekly cleaning checklists">
@@ -92,6 +113,7 @@ a.tag{color:var(--pine);border-color:currentColor}
 .foot{font-size:12.5px;color:var(--muted);margin-top:28px;max-width:65ch}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100% - 32px)}
 .toast.show{opacity:1}
+.offline{display:inline-block;margin:0 0 12px;font:600 12.5px var(--body);color:var(--warn);border:1px solid currentColor;border-radius:99px;padding:3px 10px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 <style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
@@ -110,6 +132,7 @@ a.tag{color:var(--pine);border-color:currentColor}
 </header>
 
 <main class="wrap">
+  <p class="offline" id="offline" role="status" hidden>Offline — will sync</p>
   <div class="top" hidden>
     <div class="who-line">Checking off as <strong id="whoName"></strong><button type="button" class="linkbtn" id="changeName">Not you?</button></div>
   </div>
@@ -145,7 +168,7 @@ a.tag{color:var(--pine);border-color:currentColor}
     <button type="button" class="reset" id="weekReset">Clear this week’s checks</button>
   </section>
 
-  <p class="foot">This phone remembers your first name. Checks save on this device only and reset each day (Daily) or each Monday (Weekly). Tasks marked Photo need a photo taken before you check them off. Food Code tags open Florida’s adopted Food Code.</p>
+  <p class="foot">This phone remembers your first name. Checks are shared live with the whole team and reset each day (Daily) or each Monday (Weekly). Tasks marked Photo need a photo taken before you check them off. Food Code tags open Florida’s adopted Food Code.</p>
 </main>
 <div class="toast" id="toast" role="status"></div>
 <div class="setup" id="setup" hidden>
@@ -159,12 +182,13 @@ a.tag{color:var(--pine);border-color:currentColor}
   </form>
 </div>
 
-<script>
-(function(){
-"use strict";
-/* ===== CONFIG (edit per location) ===== */
+<script type="module">
+/* ===== Location settings come from FOH_CONFIG at the top of the page. Task lists below are the same for every store. ===== */
+const C=window.FOH_CONFIG||{};
+const SDK='https://www.gstatic.com/firebasejs/13.1.0/'; // Firebase from Google's CDN
+const TZ=C.timeZone||'America/New_York', LOC=C.locationId||'';
 const CODE_URL='https://www2.myfloridalicense.com/hr/statutes/documents/2017-FDA-Food-Code-Adopted.pdf'; // Florida DBPR's adopted 2017 FDA Food Code (61C-1.001, F.A.C.)
-const LATE_CLOSE_HOUR=5; // before 5 AM, the daily sheet still counts as yesterday's close
+const LATE_CLOSE_HOUR=Number.isInteger(C.dayCutoffHour)?C.dayCutoffHour:5; // before this hour, the daily sheet still counts as yesterday's close
 const DAILY=[
  {role:'Open · Bar',note:'Openers: full stock and setup. Work top down so you don’t dirty what you just cleaned. Everything done before service.',items:[
   ['o-dust','Walls, ceilings, and lights brushed','Dust and overnight spiders, bar and dining. Knock down any cobwebs you see all day.'],
@@ -259,40 +283,59 @@ const PHOTO=new Set(['w-bathfloor','o-garnish','o-final','c-garnish','c-icewell'
 /* ====================================== */
 const $=id=>document.getElementById(id);
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
-const store={get(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch(e){return {}}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},raw(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}}};
-const pad=n=>String(n).padStart(2,'0');
-const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const now=new Date();
-const shift=new Date(now); if(now.getHours()<LATE_CLOSE_HOUR) shift.setDate(now.getDate()-1);
-const DAY=key(shift);
-const mon=new Date(shift); mon.setDate(shift.getDate()-((shift.getDay()+6)%7)); const WEEK=key(mon);
-$('dayDate').textContent=shift.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+' · tap the box to check a task off';
-$('weekDate').textContent='Week of '+mon.toLocaleDateString(undefined,{month:'long',day:'numeric'})+' · starts fresh each Monday';
+const store={raw(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}}};
 
-/* first-visit setup: first name remembered on this device */
+/* Day rules, in the location's time zone: before the cutoff hour still counts as the previous day; the week starts Monday. */
+function shiftNow(){
+  const p={};new Intl.DateTimeFormat('en-US',{timeZone:TZ,year:'numeric',month:'numeric',day:'numeric',hour:'numeric',hourCycle:'h23'}).formatToParts(new Date()).forEach(x=>{p[x.type]=x.value});
+  const u=new Date(Date.UTC(+p.year,+p.month-1,+p.day));if(+p.hour%24<LATE_CLOSE_HOUR)u.setUTCDate(u.getUTCDate()-1);return u;
+}
+const key=u=>u.toISOString().slice(0,10);
+let shift,mon,DAY='',WEEK='',DOW=0;
+function setDates(){
+  const s=shiftNow(),d=key(s);if(d===DAY)return false;
+  shift=s;DAY=d;DOW=s.getUTCDay();mon=new Date(s);mon.setUTCDate(s.getUTCDate()-((DOW+6)%7));WEEK=key(mon);
+  $('dayDate').textContent=shift.toLocaleDateString(undefined,{timeZone:'UTC',weekday:'long',month:'long',day:'numeric'})+' · tap the box to check a task off';
+  $('weekDate').textContent='Week of '+mon.toLocaleDateString(undefined,{timeZone:'UTC',month:'long',day:'numeric'})+' · starts fresh each Monday';
+  return true;
+}
+setDates();
+if(C.locationName)document.querySelector('.brand span').textContent=C.locationName+' · Cleaning checklists';
+
+/* first-visit setup: first name remembered on this device (and on its anonymous Firebase user) */
 let NAME=store.raw('foh-name');
 const cleanName=v=>(v||'').replace(/[^A-Za-zÀ-ſ' -]/g,'').replace(/\s+/g,' ').trim().slice(0,20);
 function openSetup(){$('setup').hidden=false;document.body.style.overflow='hidden';$('firstName').value=NAME;setTimeout(()=>{try{$('firstName').focus()}catch(e){}},50)}
-function setName(n){NAME=n;store.raw('foh-name',n);$('whoName').textContent=n}
+function closeSetup(){$('setupErr').textContent='';$('setup').hidden=true;document.body.style.overflow=''}
+function setName(n){NAME=n;store.raw('foh-name',n);$('whoName').textContent=n;saveDevice()}
 $('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=cleanName($('firstName').value);
   if(!n){$('setupErr').textContent='Enter your first name to continue.';return}
-  const f=n.charAt(0).toUpperCase()+n.slice(1);setName(f);$('setupErr').textContent='';$('setup').hidden=true;document.body.style.overflow='';toast('Welcome, '+f+'.')});
+  const f=n.charAt(0).toUpperCase()+n.slice(1);setName(f);closeSetup();toast('Welcome, '+f+'.')});
 $('changeName').addEventListener('click',openSetup);
 if(NAME)$('whoName').textContent=NAME;else openSetup();
 
 let toastT;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2800)}
 function codeLink(sec){const a=el('a','tag','Food Code '+sec);a.href=CODE_URL+'#search=%22'+sec+'%22';a.target='_blank';a.rel='noopener';a.title='Open Florida’s adopted Food Code, then search for '+sec;return a}
 
+/* Shared checks: Firestore locations/{locationId}/days/{YYYY-MM-DD}/checks/{taskId} and .../weeks/{Monday}/checks/{taskId}.
+   Old days and weeks stay in the database as the record. */
+let fb=null,UID='',isManager=false,fbMsg='Connecting to the team list… try again in a moment.';
+const live={day:{},week:{}},unsub={};
 const scopes={
-  day:{groups:DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',k:'foh-day-'+DAY,reset:'dayReset'},
-  week:{groups:WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',k:'foh-week-'+WEEK,reset:'weekReset'}
+  day:{groups:DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',reset:'dayReset',path:()=>['days',DAY]},
+  week:{groups:WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]}
 };
+const checksCol=sc=>fb.collection(fb.db,'locations',LOC,...scopes[sc].path(),'checks');
+function saveErr(e){toast(e&&e.code==='permission-denied'?'That didn’t save. Someone may have just changed it.':'Couldn’t save: '+((e&&e.code)||e))}
+const timeFmt=new Intl.DateTimeFormat([],{hour:'numeric',minute:'2-digit',timeZone:TZ});
 function build(sc){
-  const S=scopes[sc], data=store.get(S.k), mount=$(S.mount); mount.replaceChildren();
+  const S=scopes[sc], data=live[sc], mount=$(S.mount);
+  const fid=document.activeElement&&mount.contains(document.activeElement)?document.activeElement.id:'';
+  mount.replaceChildren();
   let total=0,done=0;
   S.groups.forEach(g=>{
     const h=el('h3','grp');h.appendChild(el('span',null,g.role));
-    if(g.day===shift.getDay()&&sc==='week')h.appendChild(el('span','tag today','Today'));
+    if(g.day===DOW&&sc==='week')h.appendChild(el('span','tag today','Today'));
     const gc=el('span','gc');h.appendChild(gc);mount.appendChild(h);
     if(g.note)mount.appendChild(el('p','hint',g.note));
     const ul=el('ul','list');let gd=0;
@@ -309,14 +352,17 @@ function build(sc){
       if(PHOTO.has(id))tags.appendChild(el('span','tag photo','Photo'));
       (code||[]).forEach(c=>tags.appendChild(codeLink(c)));
       if(tags.childNodes.length)t.appendChild(tags);
-      if(rec)t.appendChild(el('span','who',rec.i+' · '+new Date(rec.t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})));
+      if(rec)t.appendChild(el('span','who',rec.i+' · '+timeFmt.format(new Date(rec.t))));
       box.addEventListener('click',()=>{
-        const d=store.get(S.k);
-        if(d[id]){delete d[id]}else{
+        if(!fb||!UID){toast(fbMsg);return}
+        const cur=live[sc][id],ref=fb.doc(checksCol(sc),id);
+        if(cur){
+          if(cur.uid!==UID&&!isManager){toast('Only '+cur.i+' or a manager can uncheck this.');return}
+          fb.deleteDoc(ref).catch(saveErr);
+        }else{
           if(!NAME){openSetup();return}
-          d[id]={i:NAME,t:new Date().toISOString()};
+          fb.setDoc(ref,{task:id,name:NAME,uid:UID,at:fb.serverTimestamp(),tappedAt:fb.Timestamp.now()}).catch(saveErr);
         }
-        store.set(S.k,d);build(sc);const b=$('chk-'+id);if(b)b.focus();
       });
       li.append(box,t);ul.appendChild(li);
     });
@@ -324,17 +370,18 @@ function build(sc){
   });
   $(S.bar).style.width=(total?done/total*100:0)+'%';
   $(S.count).textContent=done+' of '+total+' done';
+  if(fid&&$(fid))$(fid).focus({preventScroll:true});
   renderHome();
 }
 const DAYNAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function renderHome(){
-  const dd=store.get(scopes.day.k);let tot=0,dn=0;const who=[];
+  const dd=live.day;let tot=0,dn=0;const who=[];
   DAILY.forEach(g=>g.items.forEach(([id])=>{tot++;const r=dd[id];if(r){dn++;if(who.indexOf(r.i)<0)who.push(r.i)}}));
   $('sumDayPct').textContent=(tot?Math.round(dn/tot*100):0)+'%';
   const w=$('sumDayWho');w.replaceChildren();
   if(who.length)who.forEach(i=>w.appendChild(el('span','chip',i)));else w.appendChild(el('span','meta','No one yet'));
-  const g=WEEKLY.find(x=>x.day===shift.getDay());const wd=store.get(scopes.week.k);
-  $('sumWeekLbl').textContent='Weekly · '+DAYNAMES[shift.getDay()];
+  const g=WEEKLY.find(x=>x.day===DOW);const wd=live.week;
+  $('sumWeekLbl').textContent='Weekly · '+DAYNAMES[DOW];
   if(g){const n=g.items.filter(([id])=>wd[id]).length;$('sumWeekPct').textContent=Math.round(n/g.items.length*100)+'%'}
   else $('sumWeekPct').textContent='—';
 }
@@ -343,9 +390,60 @@ Object.keys(scopes).forEach(sc=>{
   const b=$(scopes[sc].reset);let armT;
   b.addEventListener('click',()=>{
     if(!b.classList.contains('arm')){b.classList.add('arm');b.dataset.t=b.textContent;b.textContent='Tap again to clear';armT=setTimeout(()=>{b.classList.remove('arm');b.textContent=b.dataset.t},4000);return}
-    clearTimeout(armT);b.classList.remove('arm');b.textContent=b.dataset.t;store.set(scopes[sc].k,{});build(sc);toast('Cleared.');
+    clearTimeout(armT);b.classList.remove('arm');b.textContent=b.dataset.t;
+    if(!fb||!UID){toast(fbMsg);return}
+    const all=Object.entries(live[sc]),mine=all.filter(([,r])=>isManager||r.uid===UID);
+    mine.forEach(([id])=>fb.deleteDoc(fb.doc(checksCol(sc),id)).catch(saveErr));
+    toast(mine.length<all.length?'Cleared your checks. Only the person who checked a task or a manager can clear the rest.':'Cleared.');
   });
 });
+
+function listen(sc){
+  if(unsub[sc])unsub[sc]();
+  live[sc]={};build(sc);
+  unsub[sc]=fb.onSnapshot(checksCol(sc),snap=>{
+    const o={};
+    snap.forEach(d=>{const x=d.data({serverTimestamps:'estimate'});const ts=x.tappedAt||x.at;o[d.id]={i:x.name,uid:x.uid,t:ts&&ts.toMillis?ts.toMillis():Date.now()}});
+    live[sc]=o;build(sc);
+  },e=>{fbMsg='Can’t load the team’s checks ('+e.code+'). Reload the page.';toast(fbMsg)});
+}
+function saveDevice(){if(fb&&UID&&NAME)fb.setDoc(fb.doc(fb.db,'locations',LOC,'devices',UID),{name:NAME,lastSeen:fb.serverTimestamp()}).catch(()=>{})}
+function restoreName(){
+  if(NAME){saveDevice();return}
+  fb.getDoc(fb.doc(fb.db,'locations',LOC,'devices',UID)).then(s=>{const n=s.exists()&&cleanName(s.data().name);
+    if(n&&!NAME){setName(n);closeSetup();toast('Welcome back, '+n+'.')}}).catch(()=>{});
+}
+async function connect(){
+  const f=C.firebase||{};
+  if(!f.apiKey||!f.projectId||!/^[a-z0-9-]{1,40}$/.test(LOC)){fbMsg='Not connected to the team list yet. A manager needs to finish setup.';toast(fbMsg);return}
+  try{
+    const [A,U,S]=await Promise.all([import(SDK+'firebase-app.js'),import(SDK+'firebase-auth.js'),import(SDK+'firebase-firestore.js')]);
+    const app=A.initializeApp(f);
+    if(C.appCheckSiteKey){const K=await import(SDK+'firebase-app-check.js');K.initializeAppCheck(app,{provider:new K.ReCaptchaV3Provider(C.appCheckSiteKey),isTokenAutoRefreshEnabled:true})}
+    const auth=U.getAuth(app);
+    let db;try{db=S.initializeFirestore(app,{localCache:S.persistentLocalCache({tabManager:S.persistentMultipleTabManager()})})}catch(e){db=S.getFirestore(app)}
+    if(/^(localhost|127\.0\.0\.1)$/.test(location.hostname)&&new URLSearchParams(location.search).has('emulator')){
+      U.connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});S.connectFirestoreEmulator(db,'127.0.0.1',8080);
+    }
+    fb=Object.assign({db},S);
+    const signIn=()=>U.signInAnonymously(auth).catch(e=>{fbMsg=navigator.onLine?'Couldn’t connect ('+e.code+'). Reload the page.':'No signal. The team list loads once you’re online.';toast(fbMsg)});
+    U.onAuthStateChanged(auth,user=>{
+      if(!user){signIn();return}
+      if(UID===user.uid)return;
+      UID=user.uid;fbMsg='Connecting to the team list… try again in a moment.';
+      listen('day');listen('week');
+      fb.onSnapshot(fb.doc(db,'locations',LOC,'managers',UID),s=>{isManager=s.exists()},()=>{isManager=false});
+      restoreName();
+    });
+    window.addEventListener('online',()=>{if(!UID)signIn()});
+  }catch(e){fbMsg='Couldn’t load the team list. Check your signal and reload.';toast(fbMsg);console.warn(e)}
+}
+/* New day at the cutoff hour, new week on Monday: switch sheets without a reload */
+function rollover(){if(setDates()){if(fb&&UID){listen('day');listen('week')}else{build('day');build('week')}}}
+setInterval(rollover,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)rollover()});
+
+function net(){$('offline').hidden=navigator.onLine}
+window.addEventListener('online',net);window.addEventListener('offline',net);net();
 
 const tabs=[...document.querySelectorAll('nav button')];
 function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));document.querySelectorAll('main section').forEach(s=>{s.hidden=s.id!==id});document.querySelector('.top').hidden=id==='home';window.scrollTo(0,0)}
@@ -353,7 +451,7 @@ tabs.forEach(t=>t.addEventListener('click',()=>{show(t.dataset.tab);try{history.
 function route(){const h=(location.hash||'').slice(1);if(h==='home'||h==='daily'||h==='weekly')show(h)}
 document.querySelectorAll('.sum').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);try{history.replaceState(null,'','#'+b.dataset.go)}catch(e){}}));
 route();window.addEventListener('hashchange',route);
-})();
+connect();
 </script>
 
 </body>
