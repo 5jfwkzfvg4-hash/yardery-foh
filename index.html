@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FOH</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="format-detection" content="telephone=no">
+<meta property="og:title" content="FOH">
+<meta property="og:description" content="The Yardery FOH daily and weekly cleaning checklists">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one narrow column; sticky header with Daily/Weekly tabs; grouped task lists with tap-to-check marked with the employee's first name (set once per device) */
+:root{
+  color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F7F8F3; --panel:#FFFFFF; --ink:#1E241A; --muted:#5B6653; --line:#DCDFD5;
+  --pine:#2F5233; --pine-ink:#FFFFFF; --amber:#E4A821; --done:#4E7A55; --done-bg:#EEF4EC; --warn:#9A3B1E;
+  --display:"Bitter",Georgia,"Times New Roman",serif;
+  --body:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  -webkit-text-size-adjust:100%; text-size-adjust:100%;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#131711; --panel:#1C2219; --ink:#E8ECE2; --muted:#A3AE99; --line:#323B2D;
+  --pine:#9FCB8E; --pine-ink:#10160E; --amber:#F0BE4C; --done:#9FCB8E; --done-bg:#1F2B1D; --warn:#F19374; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131711; --panel:#1C2219; --ink:#E8ECE2; --muted:#A3AE99; --line:#323B2D;
+  --pine:#9FCB8E; --pine-ink:#10160E; --amber:#F0BE4C; --done:#9FCB8E; --done-bg:#1F2B1D; --warn:#F19374; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--pine)}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--pine);color:var(--pine-ink)}
+header .wrap{padding-block:14px 0;display:flex;flex-direction:column;gap:10px}
+.brand{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:800 26px/1.1 var(--display);margin:0;letter-spacing:.01em}
+.brand span{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+nav{display:flex;gap:4px}
+nav button{flex:1;font:600 15px var(--body);color:inherit;background:none;border:0;padding:10px 8px 12px;border-bottom:3px solid transparent;opacity:.75;cursor:pointer}
+nav button[aria-selected="true"]{opacity:1;border-bottom-color:var(--amber)}
+nav button:focus-visible,button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+main{padding-block:18px 48px}
+h2{font:700 22px/1.2 var(--display);margin:0;color:var(--pine);text-wrap:balance}
+.sub{color:var(--muted);margin:4px 0 0}
+.top{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}
+.progress{display:flex;align-items:center;gap:10px}
+.bar{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--done);transition:width .25s}
+.count{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.inirow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px}
+.who-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.who-line strong{color:var(--ink)}
+.linkbtn{font:600 14px var(--body);color:var(--pine);background:none;border:0;padding:4px 0;text-decoration:underline;cursor:pointer}
+.setup{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;padding-block:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.setup form{width:100%;max-width:380px;display:flex;flex-direction:column;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px}
+.setup h2{font-size:26px}
+.setup input{font:600 18px var(--body);padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+.setup .go{font:700 16px var(--body);padding:13px;border:0;border-radius:999px;background:var(--pine);color:var(--pine-ink);cursor:pointer}
+.setup .err{color:var(--warn);font-size:13.5px;min-height:1em;margin:0}
+.inirow input{width:84px;font:700 16px var(--body);text-transform:uppercase;letter-spacing:.08em;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink)}
+.grp{display:flex;align-items:center;gap:8px;font:700 17px/1.25 var(--display);margin:26px 0 6px;flex-wrap:wrap}
+.grp .gc{margin-left:auto;font:500 13px var(--body);color:var(--muted);font-variant-numeric:tabular-nums}
+.hint{font-size:13.5px;color:var(--muted);margin:0 0 8px;max-width:65ch}
+ul.list{list-style:none;margin:0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.task{display:flex;gap:12px;padding:12px 14px;border-top:1px solid var(--line);align-items:flex-start}
+.task:first-child{border-top:0}
+.task.done{background:var(--done-bg)}
+.box{flex:none;width:30px;height:30px;border-radius:8px;border:2px solid var(--muted);background:var(--panel);color:var(--pine-ink);font:800 16px var(--body);cursor:pointer;display:grid;place-items:center;margin-top:1px}
+.task.done .box{background:var(--done);border-color:var(--done)}
+.t{min-width:0;display:flex;flex-direction:column;gap:3px}
+.ttl{font-weight:600}
+.task.done .ttl{text-decoration:line-through;text-decoration-color:var(--muted)}
+.d{font-size:13.5px;color:var(--muted)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11.5px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);text-decoration:none}
+a.tag{color:var(--pine);border-color:currentColor}
+.tag.photo{color:var(--warn);border-color:currentColor}
+.tag.today{background:var(--amber);color:#1E241A;border-color:var(--amber)}
+.who{font-size:12.5px;color:var(--done);font-weight:600;font-variant-numeric:tabular-nums}
+.note{margin-top:22px;padding:12px 14px;border-left:4px solid var(--amber);background:var(--panel);border-radius:0 10px 10px 0;font-size:14px}
+.reset{margin-top:22px;font:600 14px var(--body);color:var(--muted);background:none;border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer}
+.reset.arm{color:var(--warn);border-color:var(--warn)}
+.home{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:6px}
+.sum{display:flex;flex-direction:column;gap:10px;text-align:left;font:inherit;color:inherit;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;cursor:pointer;box-shadow:0 6px 18px rgba(31,58,36,.08)}
+.sum:hover{border-color:var(--pine)}
+.sum .lbl{font:700 13px var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sum .pct{font:800 48px/1 var(--display);color:var(--pine);font-variant-numeric:tabular-nums}
+.sum .meta{font-size:14px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:700 13px var(--body);letter-spacing:.06em;padding:4px 10px;border-radius:99px;background:var(--done-bg);color:var(--done);border:1px solid var(--line)}
+.foot{font-size:12.5px;color:var(--muted);margin-top:28px;max-width:65ch}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100% - 32px)}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand"><h1>FOH</h1><span>The Yardery · Cleaning checklists</span></div>
+    <nav role="tablist">
+      <button role="tab" id="tab-home" data-tab="home" aria-selected="true">Home</button>
+      <button role="tab" id="tab-daily" data-tab="daily" aria-selected="false">Daily</button>
+      <button role="tab" id="tab-weekly" data-tab="weekly" aria-selected="false">Weekly</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="top" hidden>
+    <div class="who-line">Checking off as <strong id="whoName"></strong><button type="button" class="linkbtn" id="changeName">Not you?</button></div>
+  </div>
+
+  <section id="home">
+    <div class="home">
+      <button type="button" class="sum" id="sumDaily" data-go="daily">
+        <span class="lbl">Daily</span>
+        <span class="pct" id="sumDayPct">0%</span>
+        <span class="chips" id="sumDayWho"></span>
+      </button>
+      <button type="button" class="sum" id="sumWeekly" data-go="weekly">
+        <span class="lbl" id="sumWeekLbl">Weekly</span>
+        <span class="pct" id="sumWeekPct">0%</span>
+      </button>
+    </div>
+  </section>
+
+  <section id="daily" hidden>
+    <h2>Daily</h2>
+    <p class="sub" id="dayDate"></p>
+    <div class="progress"><div class="bar"><i id="dayBar"></i></div><span class="count" id="dayCount"></span></div>
+    <div id="dailyLists"></div>
+    <button type="button" class="reset" id="dayReset">Clear today’s checks</button>
+  </section>
+
+  <section id="weekly" hidden>
+    <h2>Weekly</h2>
+    <p class="sub" id="weekDate"></p>
+    <div class="progress"><div class="bar"><i id="weekBar"></i></div><span class="count" id="weekCount"></span></div>
+    <div id="weeklyLists"></div>
+    <div class="note"><strong>Every day:</strong> Sweep and mop behind all bars. Mats are pulled and cleaned underneath. Those are on the Daily tab.</div>
+    <button type="button" class="reset" id="weekReset">Clear this week’s checks</button>
+  </section>
+
+  <p class="foot">This phone remembers your first name. Checks save on this device only and reset each day (Daily) or each Monday (Weekly). Tasks marked Photo need a photo taken before you check them off. Food Code tags open Florida’s adopted Food Code.</p>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<div class="setup" id="setup" hidden>
+  <form id="setupForm" novalidate>
+    <h2>Welcome to FOH</h2>
+    <p class="sub">Enter your first name. This phone will remember you, and every task you check off is marked with your name.</p>
+    <label class="field" for="firstName">First name</label>
+    <input id="firstName" maxlength="20" autocomplete="given-name" autocapitalize="words" spellcheck="false">
+    <p class="err" id="setupErr"></p>
+    <button class="go" type="submit">Start</button>
+  </form>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ===== CONFIG (edit per location) ===== */
+const CODE_URL='https://www2.myfloridalicense.com/hr/statutes/documents/2017-FDA-Food-Code-Adopted.pdf'; // Florida DBPR's adopted 2017 FDA Food Code (61C-1.001, F.A.C.)
+const LATE_CLOSE_HOUR=5; // before 5 AM, the daily sheet still counts as yesterday's close
+const DAILY=[
+ {role:'Open · Bar',note:'Openers: full stock and setup. Work top down so you don’t dirty what you just cleaned. Everything done before service.',items:[
+  ['o-dust','Walls, ceilings, and lights brushed','Dust and overnight spiders, bar and dining. Knock down any cobwebs you see all day.'],
+  ['o-bartop','Entire bar top and display shelves wiped down'],
+  ['o-display','Liquor bottles set in display spots','Match the bar bible photo. Labels forward and clean. Display cooler lights on.'],
+  ['o-wells','Speed wells organized for efficiency and seasonal cocktails'],
+  ['o-ice','Ice bins filled completely; ice buckets stored upside down'],
+  ['o-taps','Beer taps on'],
+  ['o-garnish','Garnishes cut, labeled, dated, and iced','Lemons, limes, oranges, cucumbers, jalapeños. Lidded, labeled, in the iced-down caddy.',['3-302.12']],
+  ['o-juice','Juices stocked in a half pan on ice','OJ, pineapple, lime, and seasonals'],
+  ['o-glass','Glassware stocked: wine, rocks, Collins, pints'],
+  ['o-tools','Bar tools out; sani spray and bar towels ready','Shakers, strainers, jiggers, yarai',['3-304.14']],
+  ['o-mats','Bar mats set, logos facing guests'],
+  ['o-tvs','TVs on, sports playing'],
+  ['o-final','Final check: bar clean, organized, guest-ready','Photo of the whole bar from the guest side']]},
+ {role:'Open · Floor',items:[
+  ['o-trash','Trash cans out for service'],
+  ['o-caddies','Napkin holders and caddies stocked and placed','Tables and bar top. To-go’s, salt, pepper, and silverware on hand.'],
+  ['o-rest','Restrooms stocked and guest-ready (upstairs)','Soap, paper towels, toilet paper',['6-301.11','6-301.12','6-302.11']]]},
+ {role:'Close · Bar breakdown',note:'Closers: full clean and reset — everything ready for open. You can preclose, but you’re not cut until a manager says so. Mosquito season: close the screens 30 minutes before sunset.',items:[
+  ['c-bottles','Wells broken down; every bottle wiped and locked up','Pull all bottles, wipe each clean, return to proper storage'],
+  ['c-garnish','Garnishes tossed or stored; everything opened labeled and dated','48-hour max on cut garnishes',['3-302.12']],
+  ['c-caddy','Fruit caddies cleaned and sanitized',null,['4-602.11']],
+  ['c-icewell','Ice wells burned, cleaned, sanitized — no mold',null,['4-602.11','4-702.11']],
+  ['c-sinks','Bar sinks cleaned and sanitized — no buildup'],
+  ['c-soda','Soda gun nozzles and holder cleaned',null,['4-602.11']],
+  ['c-draft','Draft handles and taps wiped; drip tray cleaned'],
+  ['c-lines','Draft lines shut off (down bartender)'],
+  ['c-wine','Open wine checked and dated','Red 3 days, white 7 days. Give expired bottles to the MOD.'],
+  ['c-mats','Bar mats pulled, cleaned, and cleaned under'],
+  ['c-tvs','TVs off']]},
+ {role:'Close · Bar floor & reset',items:[
+  ['c-chairs','All chairs and bar stools moved'],
+  ['c-floor','Bar floor swept and mopped, left clean and dry','Rugs, under ice wells, behind the bar. Pull trash from drains. Mop behind bar; spot-mop sticky areas.'],
+  ['c-rails','Bar tops, rails, speed rails (sides too), and service areas wiped'],
+  ['c-reset','Bar organized and light-stocked for next shift','Photo of the finished bar']]},
+ {role:'Close · Dining & restrooms',items:[
+  ['c-station','Server station wiped out'],
+  ['c-dining','Dining floor swept','Broom and dustpan — not blown off'],
+  ['c-trash','All trash out; new liners in every can','Bar cans and dining trash boxes'],
+  ['c-trashwall','FOH trash can wall cleaned'],
+  ['c-fountain','Soda fountain cleaned and sanitized','Spill trays pulled and washed, levers and backsplash cleaned, nozzles and diffusers washed and sanitized',['4-602.11','4-702.11']],
+  ['c-drink','Drink machine cleaned'],
+  ['c-italian','Italian ice machine cleaned','Wipe exterior. Parts that touch product: wash, rinse, sanitize per manufacturer.',['4-602.11']],
+  ['c-rest','Restrooms full clean (upstairs)','Sinks, dispensers, toilets, mirrors, walls. Women’s sanitary boxes emptied, lids on. Bathrooms and hallway swept and mopped — tiles white.',['5-501.17']],
+  ['c-chem','Sanitizer buckets dumped; chemicals stored away from and below food and ice',null,['3-304.14','7-201.11']]]}
+];
+const WEEKLY=[
+ {role:'Monday · Bar exterior detail',day:1,items:[
+  ['w-mon-out','Outside of all bars cleaned and wiped'],
+  ['w-mon-foot','Guest-side foot walls detailed; scuffs, marks, sticky residue removed'],
+  ['w-mon-tables','Bar tables and chairs wiped'],
+  ['w-mon-trim','Lower trim and kick plates cleaned'],
+  ['w-bathfloor','Bathroom floors scrubbed','Deck brush, grout lines, behind toilets']]},
+ {role:'Tuesday · Storage & backups',day:2,items:[
+  ['w-tue-cab','All storage cabinets wiped out'],
+  ['w-tue-cooler','Beer and wine cooler organized, first in first out'],
+  ['w-tue-keg','Keg room swept and cleaned'],
+  ['w-tue-backups','Backups restocked','Forks, knives, napkins, straws, to-go supplies']]},
+ {role:'Wednesday · Bar equipment',day:3,items:[
+  ['w-wed-liquor','Liquor room cleaned and organized','Sweep under shelves, mop the closet'],
+  ['w-wed-place','Everything in its designated spot, including event equipment'],
+  ['w-wed-soda','Soda guns and holders sanitized',null,['4-602.11']],
+  ['w-wed-taps','Taps and draft handles cleaned'],
+  ['w-wed-handles','Cooler handles cleaned'],
+  ['w-wed-pos','POS stations wiped'],
+  ['w-pingpong','Ping pong table full clean','Top, legs, net, underside']]},
+ {role:'Thursday · Bar exterior detail',day:4,items:[
+  ['w-thu-out','Outside of all bars and foot walls wiped; scuffs and residue removed'],
+  ['w-thu-stools','Bar stools and chair legs wiped'],
+  ['w-thu-trim','Trim and ledges cleaned']]},
+ {role:'Friday · Storage detail',day:5,items:[
+  ['w-fri-deck','Under the dry deck cleaned'],
+  ['w-fri-cups','Cup and storage areas cleaned and organized','Including under the mats where cups sit'],
+  ['w-fri-bottles','Liquor bottles wiped'],
+  ['w-fri-garnish','Garnish station organized'],
+  ['w-cobweb','Cobweb walkthrough, whole property','Rafters, fence, light strings, under benches']]},
+ {role:'Saturday · Light maintenance',day:6,items:[
+  ['w-sat-service','Service areas and service stations spot-cleaned and wiped'],
+  ['w-sat-inv','Inventory check and top-off','Forks, knives, straws, napkins, mixers. Garnish containers clean.'],
+  ['w-sat-cans','Outside of trash cans cleaned']]},
+ {role:'Sunday · Early close full reset',day:0,items:[
+  ['w-sun-mop','Deep mop behind all bars'],
+  ['w-sun-drains','Drains cleaned and bleached'],
+  ['w-sun-coolers','All coolers wiped out: walls, shelves, gaskets',null,['4-602.13']],
+  ['w-sun-wipe','Full wipe of all surfaces']]}
+];
+/* Photo-required tasks. Tasks in SLOTS need one photo per slot. Everything else is checkbox + initials. */
+const SLOTS={'c-rest':['Men’s restroom','Women’s restroom'],'w-bathfloor':['Men’s restroom','Women’s restroom']};
+const PHOTO=new Set(['w-bathfloor','o-garnish','o-final','c-garnish','c-icewell','c-sinks','c-soda','c-floor','c-reset','c-fountain','c-italian','c-rest','c-chem','c-dining','w-sun-drains','w-sun-coolers']);
+
+/* ====================================== */
+const $=id=>document.getElementById(id);
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+const store={get(k){try{return JSON.parse(localStorage.getItem(k)||'{}')}catch(e){return {}}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}},raw(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}}};
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const now=new Date();
+const shift=new Date(now); if(now.getHours()<LATE_CLOSE_HOUR) shift.setDate(now.getDate()-1);
+const DAY=key(shift);
+const mon=new Date(shift); mon.setDate(shift.getDate()-((shift.getDay()+6)%7)); const WEEK=key(mon);
+$('dayDate').textContent=shift.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})+' · tap the box to check a task off';
+$('weekDate').textContent='Week of '+mon.toLocaleDateString(undefined,{month:'long',day:'numeric'})+' · starts fresh each Monday';
+
+/* first-visit setup: first name remembered on this device */
+let NAME=store.raw('foh-name');
+const cleanName=v=>(v||'').replace(/[^A-Za-zÀ-ſ' -]/g,'').replace(/\s+/g,' ').trim().slice(0,20);
+function openSetup(){$('setup').hidden=false;document.body.style.overflow='hidden';$('firstName').value=NAME;setTimeout(()=>{try{$('firstName').focus()}catch(e){}},50)}
+function setName(n){NAME=n;store.raw('foh-name',n);$('whoName').textContent=n}
+$('setupForm').addEventListener('submit',e=>{e.preventDefault();const n=cleanName($('firstName').value);
+  if(!n){$('setupErr').textContent='Enter your first name to continue.';return}
+  const f=n.charAt(0).toUpperCase()+n.slice(1);setName(f);$('setupErr').textContent='';$('setup').hidden=true;document.body.style.overflow='';toast('Welcome, '+f+'.')});
+$('changeName').addEventListener('click',openSetup);
+if(NAME)$('whoName').textContent=NAME;else openSetup();
+
+let toastT;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),2800)}
+function codeLink(sec){const a=el('a','tag','Food Code '+sec);a.href=CODE_URL+'#search=%22'+sec+'%22';a.target='_blank';a.rel='noopener';a.title='Open Florida’s adopted Food Code, then search for '+sec;return a}
+
+const scopes={
+  day:{groups:DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',k:'foh-day-'+DAY,reset:'dayReset'},
+  week:{groups:WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',k:'foh-week-'+WEEK,reset:'weekReset'}
+};
+function build(sc){
+  const S=scopes[sc], data=store.get(S.k), mount=$(S.mount); mount.replaceChildren();
+  let total=0,done=0;
+  S.groups.forEach(g=>{
+    const h=el('h3','grp');h.appendChild(el('span',null,g.role));
+    if(g.day===shift.getDay()&&sc==='week')h.appendChild(el('span','tag today','Today'));
+    const gc=el('span','gc');h.appendChild(gc);mount.appendChild(h);
+    if(g.note)mount.appendChild(el('p','hint',g.note));
+    const ul=el('ul','list');let gd=0;
+    g.items.forEach(([id,title,desc,code])=>{
+      total++;const rec=data[id];if(rec)done++,gd++;
+      const li=el('li','task'+(rec?' done':''));
+      const box=el('button','box',rec?'✓':'');box.type='button';box.id='chk-'+id;
+      box.setAttribute('aria-pressed',String(!!rec));box.setAttribute('aria-label',(rec?'Uncheck ':'Check off ')+title);
+      const t=el('div','t');t.appendChild(el('span','ttl',title));
+      if(desc)t.appendChild(el('span','d',desc));
+      const slots=SLOTS[id];
+      if(slots)t.appendChild(el('span','d','Photos: '+slots.join(' + ')));
+      const tags=el('div','tags');
+      if(PHOTO.has(id))tags.appendChild(el('span','tag photo','Photo'));
+      (code||[]).forEach(c=>tags.appendChild(codeLink(c)));
+      if(tags.childNodes.length)t.appendChild(tags);
+      if(rec)t.appendChild(el('span','who',rec.i+' · '+new Date(rec.t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})));
+      box.addEventListener('click',()=>{
+        const d=store.get(S.k);
+        if(d[id]){delete d[id]}else{
+          if(!NAME){openSetup();return}
+          d[id]={i:NAME,t:new Date().toISOString()};
+        }
+        store.set(S.k,d);build(sc);const b=$('chk-'+id);if(b)b.focus();
+      });
+      li.append(box,t);ul.appendChild(li);
+    });
+    gc.textContent=gd+'/'+g.items.length;mount.appendChild(ul);
+  });
+  $(S.bar).style.width=(total?done/total*100:0)+'%';
+  $(S.count).textContent=done+' of '+total+' done';
+  renderHome();
+}
+const DAYNAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+function renderHome(){
+  const dd=store.get(scopes.day.k);let tot=0,dn=0;const who=[];
+  DAILY.forEach(g=>g.items.forEach(([id])=>{tot++;const r=dd[id];if(r){dn++;if(who.indexOf(r.i)<0)who.push(r.i)}}));
+  $('sumDayPct').textContent=(tot?Math.round(dn/tot*100):0)+'%';
+  const w=$('sumDayWho');w.replaceChildren();
+  if(who.length)who.forEach(i=>w.appendChild(el('span','chip',i)));else w.appendChild(el('span','meta','No one yet'));
+  const g=WEEKLY.find(x=>x.day===shift.getDay());const wd=store.get(scopes.week.k);
+  $('sumWeekLbl').textContent='Weekly · '+DAYNAMES[shift.getDay()];
+  if(g){const n=g.items.filter(([id])=>wd[id]).length;$('sumWeekPct').textContent=Math.round(n/g.items.length*100)+'%'}
+  else $('sumWeekPct').textContent='—';
+}
+Object.keys(scopes).forEach(sc=>{
+  build(sc);
+  const b=$(scopes[sc].reset);let armT;
+  b.addEventListener('click',()=>{
+    if(!b.classList.contains('arm')){b.classList.add('arm');b.dataset.t=b.textContent;b.textContent='Tap again to clear';armT=setTimeout(()=>{b.classList.remove('arm');b.textContent=b.dataset.t},4000);return}
+    clearTimeout(armT);b.classList.remove('arm');b.textContent=b.dataset.t;store.set(scopes[sc].k,{});build(sc);toast('Cleared.');
+  });
+});
+
+const tabs=[...document.querySelectorAll('nav button')];
+function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));document.querySelectorAll('main section').forEach(s=>{s.hidden=s.id!==id});document.querySelector('.top').hidden=id==='home';window.scrollTo(0,0)}
+tabs.forEach(t=>t.addEventListener('click',()=>{show(t.dataset.tab);try{history.replaceState(null,'','#'+t.dataset.tab)}catch(e){}}));
+function route(){const h=(location.hash||'').slice(1);if(h==='home'||h==='daily'||h==='weekly')show(h)}
+document.querySelectorAll('.sum').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);try{history.replaceState(null,'','#'+b.dataset.go)}catch(e){}}));
+route();window.addEventListener('hashchange',route);
+})();
+</script>
+
+</body>
+</html>
