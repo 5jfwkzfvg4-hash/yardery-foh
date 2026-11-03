@@ -6,7 +6,7 @@ One page (`index.html`), plain HTML/CSS/JavaScript, no build step. Checks are sh
 through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff need no passwords).
 
 ## Edit tasks: the manager page
-**https://5jfwkzfvg4-hash.github.io/yardery-foh/manage.html** (bookmark it; it only opens on manager phones).
+**https://5jfwkzfvg4-hash.github.io/yardery-foh/manage.html**. Manager phones also see a **Manager page** link on the staff page (under the Home boxes, and next to "Not you?"); staff phones never see it.
 - **Daily / Weekly tabs:** change a task's wording or details, ↑ ↓ to reorder, **Move to…** another section or day,
   **Remove** (tap twice), **+ Add task**, and tap a **position** to assign it. Daily sections can be added, renamed,
   reordered and removed; Weekly has one section per day. **Photo & Food Code** holds the Photo tag and code links.

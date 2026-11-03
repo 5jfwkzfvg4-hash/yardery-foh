@@ -106,6 +106,10 @@ await t('a manager can uncheck anyone', async () => {
   await pb.waitForTimeout(800);
   await pb.click('#chk-o-taps'); await waitPressed(pa, 'o-taps', 'false');
 });
+await t('staff page shows the Manager page link only on manager phones', async () => {
+  await pb.reload(); await pb.click('#tab-home'); await pb.waitForSelector('.mgr-home a.mgr:not([hidden])', {timeout: 8000});
+  ok(await pa.locator('a.mgr:visible').count() === 0, 'staff phone sees the manager link');
+});
 await t('manager page: a non-manager phone sees its device ID instead of the editor', async () => {
   const p = await A.ctx.newPage(); await p.goto(URL + 'manage.html?emulator=1');
   await p.waitForSelector('#gateId:not([hidden])', {timeout: 8000});
