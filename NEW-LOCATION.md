@@ -32,7 +32,8 @@ Click **Commit changes**.
 1. Open the new link on two phones, enter a first name on each.
 2. Check a task on one: it should show on the other within a few seconds. Uncheck it again.
 3. Add the store's managers (README → "Make someone a manager"; in the rules add a line like `'orlando': ['id1']`).
-4. Outside Florida? The Food Code links point to Florida's adopted code (`CODE_URL` in `index.html`); swap in the state's.
+4. Print a QR poster with the new link (README → Files → `FOH-QR-Poster.pdf`; Claude can make it).
+5. Outside Florida? The Food Code links point to Florida's adopted code (`CODE_URL` in `index.html`); swap in the state's.
 
 ### Set up Firebase (only for option B, or the very first store)
 1. https://console.firebase.google.com → **Create a project** → name it → turn **Google Analytics off** → **Create project**.

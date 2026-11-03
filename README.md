@@ -51,5 +51,7 @@ What protects the data is `firestore.rules` (published in the Firebase console),
 - `index.html` — the page. **Location settings are the `FOH_CONFIG` block near the top.**
 - `firestore.rules` — the security rules (paste into Firebase → Firestore → Rules → Publish whenever this file changes).
 - `NEW-LOCATION.md` — one-page checklist for opening a new store.
+- `FOH-QR-Poster.pdf` — printable poster (Letter) with the staff link's QR code. For another store:
+  `node tools/poster.mjs <store link> "<store name>"`.
 - `tests/` — automatic checks (for whoever maintains the code): `npm install`, then `npm test`
   (needs Java 11+; runs everything against Firebase's local emulator, never the real database).
