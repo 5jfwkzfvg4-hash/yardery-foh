@@ -6,6 +6,7 @@ rules_version = '2';
 // - Anyone can check a task off, only as themselves (their own device id, the real server time).
 // - Only the person who checked a task, or a manager, can uncheck it.
 // - Nobody can edit a check, or delete a day or week; old days and weeks stay as the record.
+// - Only managers can change the task lists (manager page); every save is kept in taskHistory.
 // - Managers: the managerIds() list below (or a locations/{locationId}/managers/{device id} document added in the console).
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -34,6 +35,15 @@ service cloud.firestore {
         && d.tappedAt > request.time - duration.value(8, 'd');
     }
 
+    function validTasks() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['daily', 'weekly', 'positions', 'updatedAt', 'updatedBy', 'updatedByUid'])
+        && d.daily is list && d.weekly is list && d.positions is list
+        && d.updatedBy is string && d.updatedBy.size() <= 20
+        && d.updatedByUid == request.auth.uid
+        && d.updatedAt == request.time;
+    }
+
     match /locations/{loc} {
       // Checks: locations/{loc}/days/{YYYY-MM-DD}/checks/{taskId} and locations/{loc}/weeks/{Monday YYYY-MM-DD}/checks/{taskId}
       match /{period}/{sheet}/checks/{task} {
@@ -47,6 +57,19 @@ service cloud.firestore {
         allow delete: if signedIn() && period in ['days', 'weeks']
           && (resource.data.uid == request.auth.uid || isManager(loc));
         allow update: if false;
+      }
+
+      // Task lists, edited on the manager page (manage.html). Every phone reads them; only managers save them.
+      // Each save is also kept in taskHistory, so an older list can be brought back.
+      match /config/{docId} {
+        allow read: if signedIn();
+        allow create, update: if signedIn() && docId == 'tasks' && isManager(loc) && validTasks();
+        allow delete: if false;
+      }
+      match /taskHistory/{id} {
+        allow read: if signedIn() && isManager(loc);
+        allow create: if signedIn() && isManager(loc) && validTasks();
+        allow update, delete: if false;
       }
 
       // Each phone's first name, tied to its anonymous user id (so it is remembered and managers can find a device).

@@ -5,30 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>FOH</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<script>
-/* ===== LOCATION CONFIG: the only part a new store changes (see NEW-LOCATION.md) =====
-   These Firebase values are safe to be public: they only say WHICH Firebase project to talk to.
-   The security rules (firestore.rules) are what decide who can read and write.
-   Never put passwords, pay, SSNs, bank details or private keys anywhere in this site. */
-window.FOH_CONFIG={
-  locationName:'The Yardery',       // shown at the top of the page
-  locationId:'sanford',             // lowercase letters, numbers, dashes. Each store's checks are saved under its own id.
-  timeZone:'America/New_York',      // the store's time zone
-  dayCutoffHour:5,                  // before 5 AM still counts as the previous day, to match the close
-  firebase:{                        // paste from Firebase: Project settings > Your apps > SDK setup and configuration > Config
-    apiKey:'AIzaSyCD8n6TN153n52Uh5V2oOXcBzqo3lPRMjU',
-    authDomain:'yardery-foh.firebaseapp.com',
-    projectId:'yardery-foh',
-    storageBucket:'yardery-foh.firebasestorage.app',
-    messagingSenderId:'588087483594',
-    appId:'1:588087483594:web:6d29a5766f420cfce46833'
-  },
-  managers:[                        // manager device ids (can uncheck anyone). Must match managerIds() in firestore.rules.
-    'TjGZ7fcbmAgo4y2skvQPfuH4fJB2'   // Clay
-  ],
-  appCheckSiteKey:''                // optional extra lock (reCAPTCHA v3 site key); leave empty unless set up
-};
-</script>
+<script src="config.js"></script>
+<script src="tasks.js"></script>
 <meta name="format-detection" content="telephone=no">
 <meta property="og:title" content="FOH">
 <meta property="og:description" content="The Yardery FOH daily and weekly cleaning checklists">
@@ -186,102 +164,14 @@ a.tag{color:var(--pine);border-color:currentColor}
 </div>
 
 <script type="module">
-/* ===== Location settings come from FOH_CONFIG at the top of the page. Task lists below are the same for every store. ===== */
+/* ===== Location settings come from config.js; built-in task lists from tasks.js (or the manager page once saved). ===== */
 const C=window.FOH_CONFIG||{};
 const SDK='https://www.gstatic.com/firebasejs/13.1.0/'; // Firebase from Google's CDN
 const TZ=C.timeZone||'America/New_York', LOC=C.locationId||'';
 const CODE_URL='https://www2.myfloridalicense.com/hr/statutes/documents/2017-FDA-Food-Code-Adopted.pdf'; // Florida DBPR's adopted 2017 FDA Food Code (61C-1.001, F.A.C.)
 const LATE_CLOSE_HOUR=Number.isInteger(C.dayCutoffHour)?C.dayCutoffHour:5; // before this hour, the daily sheet still counts as yesterday's close
-const DAILY=[
- {role:'Open · Bar',note:'Openers: full stock and setup. Work top down so you don’t dirty what you just cleaned. Everything done before service.',items:[
-  ['o-dust','Walls, ceilings, and lights brushed','Dust and overnight spiders, bar and dining. Knock down any cobwebs you see all day.'],
-  ['o-bartop','Entire bar top and display shelves wiped down'],
-  ['o-display','Liquor bottles set in display spots','Match the bar bible photo. Labels forward and clean. Display cooler lights on.'],
-  ['o-wells','Speed wells organized for efficiency and seasonal cocktails'],
-  ['o-ice','Ice bins filled completely; ice buckets stored upside down'],
-  ['o-taps','Beer taps on'],
-  ['o-garnish','Garnishes cut, labeled, dated, and iced','Lemons, limes, oranges, cucumbers, jalapeños. Lidded, labeled, in the iced-down caddy.',['3-302.12']],
-  ['o-juice','Juices stocked in a half pan on ice','OJ, pineapple, lime, and seasonals'],
-  ['o-glass','Glassware stocked: wine, rocks, Collins, pints'],
-  ['o-tools','Bar tools out; sani spray and bar towels ready','Shakers, strainers, jiggers, yarai',['3-304.14']],
-  ['o-mats','Bar mats set, logos facing guests'],
-  ['o-tvs','TVs on, sports playing'],
-  ['o-final','Final check: bar clean, organized, guest-ready','Photo of the whole bar from the guest side']]},
- {role:'Open · Floor',items:[
-  ['o-trash','Trash cans out for service'],
-  ['o-caddies','Napkin holders and caddies stocked and placed','Tables and bar top. To-go’s, salt, pepper, and silverware on hand.'],
-  ['o-rest','Restrooms stocked and guest-ready (upstairs)','Soap, paper towels, toilet paper',['6-301.11','6-301.12','6-302.11']]]},
- {role:'Close · Bar breakdown',note:'Closers: full clean and reset — everything ready for open. You can preclose, but you’re not cut until a manager says so. Mosquito season: close the screens 30 minutes before sunset.',items:[
-  ['c-bottles','Wells broken down; every bottle wiped and locked up','Pull all bottles, wipe each clean, return to proper storage'],
-  ['c-garnish','Garnishes tossed or stored; everything opened labeled and dated','48-hour max on cut garnishes',['3-302.12']],
-  ['c-caddy','Fruit caddies cleaned and sanitized',null,['4-602.11']],
-  ['c-icewell','Ice wells burned, cleaned, sanitized — no mold',null,['4-602.11','4-702.11']],
-  ['c-sinks','Bar sinks cleaned and sanitized — no buildup'],
-  ['c-soda','Soda gun nozzles and holder cleaned',null,['4-602.11']],
-  ['c-draft','Draft handles and taps wiped; drip tray cleaned'],
-  ['c-lines','Draft lines shut off (down bartender)'],
-  ['c-wine','Open wine checked and dated','Red 3 days, white 7 days. Give expired bottles to the MOD.'],
-  ['c-mats','Bar mats pulled, cleaned, and cleaned under'],
-  ['c-tvs','TVs off']]},
- {role:'Close · Bar floor & reset',items:[
-  ['c-chairs','All chairs and bar stools moved'],
-  ['c-floor','Bar floor swept and mopped, left clean and dry','Rugs, under ice wells, behind the bar. Pull trash from drains. Mop behind bar; spot-mop sticky areas.'],
-  ['c-rails','Bar tops, rails, speed rails (sides too), and service areas wiped'],
-  ['c-reset','Bar organized and light-stocked for next shift','Photo of the finished bar']]},
- {role:'Close · Dining & restrooms',items:[
-  ['c-station','Server station wiped out'],
-  ['c-dining','Dining floor swept','Broom and dustpan — not blown off'],
-  ['c-trash','All trash out; new liners in every can','Bar cans and dining trash boxes'],
-  ['c-trashwall','FOH trash can wall cleaned'],
-  ['c-fountain','Soda fountain cleaned and sanitized','Spill trays pulled and washed, levers and backsplash cleaned, nozzles and diffusers washed and sanitized',['4-602.11','4-702.11']],
-  ['c-drink','Drink machine cleaned'],
-  ['c-italian','Italian ice machine cleaned','Wipe exterior. Parts that touch product: wash, rinse, sanitize per manufacturer.',['4-602.11']],
-  ['c-rest','Restrooms full clean (upstairs)','Sinks, dispensers, toilets, mirrors, walls. Women’s sanitary boxes emptied, lids on. Bathrooms and hallway swept and mopped — tiles white.',['5-501.17']],
-  ['c-chem','Sanitizer buckets dumped; chemicals stored away from and below food and ice',null,['3-304.14','7-201.11']]]}
-];
-const WEEKLY=[
- {role:'Monday · Bar exterior detail',day:1,items:[
-  ['w-mon-out','Outside of all bars cleaned and wiped'],
-  ['w-mon-foot','Guest-side foot walls detailed; scuffs, marks, sticky residue removed'],
-  ['w-mon-tables','Bar tables and chairs wiped'],
-  ['w-mon-trim','Lower trim and kick plates cleaned'],
-  ['w-bathfloor','Bathroom floors scrubbed','Deck brush, grout lines, behind toilets']]},
- {role:'Tuesday · Storage & backups',day:2,items:[
-  ['w-tue-cab','All storage cabinets wiped out'],
-  ['w-tue-cooler','Beer and wine cooler organized, first in first out'],
-  ['w-tue-keg','Keg room swept and cleaned'],
-  ['w-tue-backups','Backups restocked','Forks, knives, napkins, straws, to-go supplies']]},
- {role:'Wednesday · Bar equipment',day:3,items:[
-  ['w-wed-liquor','Liquor room cleaned and organized','Sweep under shelves, mop the closet'],
-  ['w-wed-place','Everything in its designated spot, including event equipment'],
-  ['w-wed-soda','Soda guns and holders sanitized',null,['4-602.11']],
-  ['w-wed-taps','Taps and draft handles cleaned'],
-  ['w-wed-handles','Cooler handles cleaned'],
-  ['w-wed-pos','POS stations wiped'],
-  ['w-pingpong','Ping pong table full clean','Top, legs, net, underside']]},
- {role:'Thursday · Bar exterior detail',day:4,items:[
-  ['w-thu-out','Outside of all bars and foot walls wiped; scuffs and residue removed'],
-  ['w-thu-stools','Bar stools and chair legs wiped'],
-  ['w-thu-trim','Trim and ledges cleaned']]},
- {role:'Friday · Storage detail',day:5,items:[
-  ['w-fri-deck','Under the dry deck cleaned'],
-  ['w-fri-cups','Cup and storage areas cleaned and organized','Including under the mats where cups sit'],
-  ['w-fri-bottles','Liquor bottles wiped'],
-  ['w-fri-garnish','Garnish station organized'],
-  ['w-cobweb','Cobweb walkthrough, whole property','Rafters, fence, light strings, under benches']]},
- {role:'Saturday · Light maintenance',day:6,items:[
-  ['w-sat-service','Service areas and service stations spot-cleaned and wiped'],
-  ['w-sat-inv','Inventory check and top-off','Forks, knives, straws, napkins, mixers. Garnish containers clean.'],
-  ['w-sat-cans','Outside of trash cans cleaned']]},
- {role:'Sunday · Early close full reset',day:0,items:[
-  ['w-sun-mop','Deep mop behind all bars'],
-  ['w-sun-drains','Drains cleaned and bleached'],
-  ['w-sun-coolers','All coolers wiped out: walls, shelves, gaskets',null,['4-602.13']],
-  ['w-sun-wipe','Full wipe of all surfaces']]}
-];
-/* Photo-required tasks. Tasks in SLOTS need one photo per slot. Everything else is checkbox + initials. */
-const SLOTS={'c-rest':['Men’s restroom','Women’s restroom'],'w-bathfloor':['Men’s restroom','Women’s restroom']};
-const PHOTO=new Set(['w-bathfloor','o-garnish','o-final','c-garnish','c-icewell','c-sinks','c-soda','c-floor','c-reset','c-fountain','c-italian','c-rest','c-chem','c-dining','w-sun-drains','w-sun-coolers']);
+const T=window.FOH_TASKS||{};
+let DAILY=T.DAILY||[], WEEKLY=T.WEEKLY||[], SLOTS=T.SLOTS||{}, PHOTO=T.PHOTO||new Set(), POS={}; // replaced by the manager's saved list when there is one
 
 /* ====================================== */
 const $=id=>document.getElementById(id);
@@ -325,8 +215,8 @@ function codeLink(sec){const a=el('a','tag','Food Code '+sec);a.href=CODE_URL+'#
 let fb=null,UID='',isManager=false,fbMsg='Connecting to the team list… try again in a moment.';
 const live={day:{},week:{}},unsub={};
 const scopes={
-  day:{groups:DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',reset:'dayReset',path:()=>['days',DAY]},
-  week:{groups:WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]}
+  day:{groups:()=>DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',reset:'dayReset',path:()=>['days',DAY]},
+  week:{groups:()=>WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]}
 };
 const checksCol=sc=>fb.collection(fb.db,'locations',LOC,...scopes[sc].path(),'checks');
 function saveErr(e){toast(e&&e.code==='permission-denied'?'That didn’t save. Someone may have just changed it.':'Couldn’t save: '+((e&&e.code)||e))}
@@ -336,7 +226,7 @@ function build(sc){
   const fid=document.activeElement&&mount.contains(document.activeElement)?document.activeElement.id:'';
   mount.replaceChildren();
   let total=0,done=0;
-  S.groups.forEach(g=>{
+  S.groups().forEach(g=>{
     const h=el('h3','grp');h.appendChild(el('span',null,g.role));
     if(g.day===DOW&&sc==='week')h.appendChild(el('span','tag today','Today'));
     const gc=el('span','gc');h.appendChild(gc);mount.appendChild(h);
@@ -352,6 +242,7 @@ function build(sc){
       const slots=SLOTS[id];
       if(slots)t.appendChild(el('span','d','Photos: '+slots.join(' + ')));
       const tags=el('div','tags');
+      (POS[id]||[]).forEach(p=>tags.appendChild(el('span','tag pos',p)));
       if(PHOTO.has(id))tags.appendChild(el('span','tag photo','Photo'));
       (code||[]).forEach(c=>tags.appendChild(codeLink(c)));
       if(tags.childNodes.length)t.appendChild(tags);
@@ -410,6 +301,14 @@ function listen(sc){
     live[sc]=o;build(sc);
   },e=>{fbMsg='Can’t load the team’s checks ('+e.code+'). Reload the page.';toast(fbMsg)});
 }
+/* The manager page (manage.html) saves the task lists to locations/{id}/config/tasks; phones switch to it live. */
+function applyTasks(x){
+  if(!x||!Array.isArray(x.daily)||!Array.isArray(x.weekly))return;
+  const conv=gs=>gs.map(g=>({role:g.role,note:g.note||undefined,day:typeof g.day==='number'?g.day:undefined,items:(g.items||[]).map(i=>[i.id,i.t,i.d||null,i.c&&i.c.length?i.c:undefined])}));
+  const sl={},ph=new Set(),po={};
+  [...x.daily,...x.weekly].forEach(g=>(g.items||[]).forEach(i=>{if(i.p)ph.add(i.id);if(i.s&&i.s.length)sl[i.id]=i.s;if(i.pos&&i.pos.length)po[i.id]=i.pos}));
+  DAILY=conv(x.daily);WEEKLY=conv(x.weekly);SLOTS=sl;PHOTO=ph;POS=po;build('day');build('week');
+}
 function saveDevice(){if(fb&&UID&&NAME)fb.setDoc(fb.doc(fb.db,'locations',LOC,'devices',UID),{name:NAME,lastSeen:fb.serverTimestamp()}).catch(()=>{})}
 function restoreName(){
   if(NAME){saveDevice();return}
@@ -435,6 +334,7 @@ async function connect(){
       if(UID===user.uid)return;
       UID=user.uid;fbMsg='Connecting to the team list… try again in a moment.';
       listen('day');listen('week');
+      fb.onSnapshot(fb.doc(db,'locations',LOC,'config','tasks'),s=>{if(s.exists())applyTasks(s.data())},()=>{});
       const listed=Array.isArray(C.managers)&&C.managers.includes(UID);isManager=listed;
       fb.onSnapshot(fb.doc(db,'locations',LOC,'managers',UID),s=>{isManager=listed||s.exists()},()=>{isManager=listed});
       restoreName();

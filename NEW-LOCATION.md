@@ -17,7 +17,7 @@
   Follow "Set up Firebase" below with a new project, then use its config in step 3.
 
 ### 3. Edit the config block (the only code change)
-In the new repo open `index.html` → pencil icon → near the top, find `window.FOH_CONFIG={` and change:
+In the new repo open `config.js` → pencil icon → change:
 | Setting | Example | Notes |
 |---|---|---|
 | `locationName` | `'The Yardery Orlando'` | shown at the top of the page |
@@ -25,15 +25,16 @@ In the new repo open `index.html` → pencil icon → near the top, find `window
 | `timeZone` | `'America/New_York'` | e.g. `'America/Chicago'` for Central time |
 | `dayCutoffHour` | `5` | before this hour still counts as the previous day |
 | `firebase` | `{apiKey:'…', …}` | option A: leave Sanford's; option B: paste the new project's config |
-| `managers` | `['device id', …]` | the store's manager phones (step 4) |
+| `managers` | `['device id', …]` | the store's manager phones (step 4; each manager opens `manage.html` and taps Copy device ID) |
 Click **Commit changes**.
 
 ### 4. Check it
 1. Open the new link on two phones, enter a first name on each.
-2. Check a task on one: it should show on the other within a few seconds. Uncheck it again.
-3. Add the store's managers (README → "Make someone a manager"; in the rules add a line like `'orlando': ['id1']`).
-4. Print a QR poster with the new link (README → Files → `FOH-QR-Poster.pdf`; Claude can make it).
-5. Outside Florida? The Food Code links point to Florida's adopted code (`CODE_URL` in `index.html`); swap in the state's.
+2. The new store starts with the built-in task list; managers change it on `…/manage.html`.
+3. Check a task on one: it should show on the other within a few seconds. Uncheck it again.
+4. Add the store's managers (README → "Make someone a manager"; in the rules add a line like `'orlando': ['id1']`).
+5. Print a QR poster with the new link (README → Files → `FOH-QR-Poster.pdf`; Claude can make it).
+6. Outside Florida? The Food Code links point to Florida's adopted code (`CODE_URL` in `index.html`); swap in the state's.
 
 ### Set up Firebase (only for option B, or the very first store)
 1. https://console.firebase.google.com → **Create a project** → name it → turn **Google Analytics off** → **Create project**.

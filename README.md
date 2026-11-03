@@ -5,29 +5,28 @@
 One page (`index.html`), plain HTML/CSS/JavaScript, no build step. Checks are shared live between every phone
 through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff need no passwords).
 
-## Change a task's wording (on GitHub, no tools needed)
-1. Open https://github.com/5jfwkzfvg4-hash/yardery-foh/blob/main/index.html
-2. Click the **pencil** icon (top right of the file). On a phone: the **⋯** menu, then **Edit file**.
-3. Press **Ctrl+F** (iPhone: share menu, **Find on Page**) and search for the words you want to change.
-   Tasks look like `['c-tvs','TVs off']`. Change only the words inside the quotes after the id:
-   - `['c-tvs','TVs off']` → `['c-tvs','All TVs off']`. Leave `c-tvs` alone; it's how the database knows the task.
-   - Keep the quotes and commas. For an apostrophe use `’` (as in `don’t`); a plain `'` breaks the page.
-4. Click **Commit changes…**, then **Commit changes**. The live page updates in about a minute.
-5. Open the staff link and check the page still loads. If it shows a blank list, undo it: open the file's
-   **History**, click the last change, then **⋯ → Revert** (or ask Claude).
+## Edit tasks: the manager page
+**https://5jfwkzfvg4-hash.github.io/yardery-foh/manage.html** (bookmark it; it only opens on manager phones).
+- **Daily / Weekly tabs:** change a task's wording or details, ↑ ↓ to reorder, **Move to…** another section or day,
+  **Remove** (tap twice), **+ Add task**, and tap a **position** to assign it. Daily sections can be added, renamed,
+  reordered and removed; Weekly has one section per day. **Photo & Food Code** holds the Photo tag and code links.
+- **Positions tab:** add, rename (renames it on every task) or remove positions.
+- Nothing changes for staff until you tap **Save**; then every phone shows the new list within seconds.
+  **Discard** throws away unsaved edits. Every save is also kept as a copy (Firestore `taskHistory`), so an
+  older list can be brought back.
+- Rewording keeps a task's checks; removing a task hides it, but its past checks stay in the records.
+- A phone that isn't a manager sees its **device ID** with a Copy button instead: that's how to add a manager (below).
 
-New task: copy a whole line, give it a **new** id (lowercase letters, numbers and dashes, never reused).
-Photo tags are the `PHOTO` list; Food Code links are the `['3-302.12']` part.
+Before the first Save, phones use the built-in lists in `tasks.js` (editable on GitHub with the pencil icon).
+After the first Save, edit tasks only on the manager page; `tasks.js` is then just the starting list for new stores.
 
 ## Make someone a manager (can uncheck anyone's task)
-1. Have them open the staff link on their phone, enter their first name and check any task.
-2. Firebase console → **Firestore Database** → **Data** → `locations` → `sanford` → `devices`.
-   Tap the entry whose panel shows their `name`, and copy its ID (their device id).
-3. Add the id in two places (or send it to Claude):
+1. Have them open **manage.html** (link above) on their phone and tap **Copy device ID**, then send it to you.
+2. Add the id in two places (or send it to Claude):
    - `firestore.rules`, in `managerIds()`: `'sanford': ['id1', 'id2']`. Then paste the whole file into
      Firebase → **Firestore Database** → **Rules** → **Publish**.
-   - `index.html`, in the config block's `managers:[ ]` list (so their phone knows to allow it).
-4. To remove a manager, delete the id from both places and publish the rules again.
+   - `config.js`, in the `managers:[ ]` list (so their phone knows to allow it).
+3. To remove a manager, delete the id from both places and publish the rules again.
    A new phone (or a cleared browser) gets a new device id, so repeat for it.
 
 ## Where the records are
@@ -36,7 +35,7 @@ Each check: task id, first name, device id, server time, tap time. Nothing delet
 An uncheck removes that one check. Only first names are stored: never pay, SSNs, bank details or passwords.
 
 ## What is public, and what protects the data
-The Firebase config in `index.html` (apiKey, projectId, appId…) is **not a secret**. It's like a street address:
+The Firebase config in `config.js` (apiKey, projectId, appId…) is **not a secret**. It's like a street address:
 it says which Firebase project the page talks to, and every visitor's browser gets it anyway. Google says so too.
 What protects the data is `firestore.rules` (published in the Firebase console), plus these settings:
 - Only phones signed in through Firebase (the site signs in automatically) can read or write. Nobody can browse other data.
@@ -48,7 +47,9 @@ What protects the data is `firestore.rules` (published in the Firebase console),
   their own script; App Check is the setting that does that.
 
 ## Files
-- `index.html` — the page. **Location settings are the `FOH_CONFIG` block near the top.**
+- `config.js` — **the location settings** (name, id, time zone, cutoff hour, Firebase, managers). The only file a new store changes.
+- `index.html` — the staff page. `manage.html` — the manager page (task editor).
+- `tasks.js` — the built-in task lists (used until the first Save on the manager page).
 - `firestore.rules` — the security rules (paste into Firebase → Firestore → Rules → Publish whenever this file changes).
 - `NEW-LOCATION.md` — one-page checklist for opening a new store.
 - `FOH-QR-Poster.pdf` — printable poster (Letter) with the staff link's QR code. For another store:
