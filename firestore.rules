@@ -74,7 +74,7 @@ service cloud.firestore {
 
       // Each phone's first name, tied to its anonymous user id (so it is remembered and managers can find a device).
       match /devices/{uid} {
-        allow read: if signedIn() && request.auth.uid == uid;
+        allow read: if signedIn() && (request.auth.uid == uid || isManager(loc));   // managers see names to assign tasks
         allow create, update: if signedIn() && request.auth.uid == uid
           && loc.matches('^[a-z0-9-]{1,40}$')
           && request.resource.data.keys().hasOnly(['name', 'lastSeen'])

@@ -171,7 +171,7 @@ const TZ=C.timeZone||'America/New_York', LOC=C.locationId||'';
 const CODE_URL='https://www2.myfloridalicense.com/hr/statutes/documents/2017-FDA-Food-Code-Adopted.pdf'; // Florida DBPR's adopted 2017 FDA Food Code (61C-1.001, F.A.C.)
 const LATE_CLOSE_HOUR=Number.isInteger(C.dayCutoffHour)?C.dayCutoffHour:5; // before this hour, the daily sheet still counts as yesterday's close
 const T=window.FOH_TASKS||{};
-let DAILY=T.DAILY||[], WEEKLY=T.WEEKLY||[], SLOTS=T.SLOTS||{}, PHOTO=T.PHOTO||new Set(), POS={}; // replaced by the manager's saved list when there is one
+let DAILY=T.DAILY||[], WEEKLY=T.WEEKLY||[], SLOTS=T.SLOTS||{}, PHOTO=T.PHOTO||new Set(), POS={}, WHO={}; // replaced by the manager's saved list when there is one
 
 /* ====================================== */
 const $=id=>document.getElementById(id);
@@ -243,6 +243,7 @@ function build(sc){
       if(slots)t.appendChild(el('span','d','Photos: '+slots.join(' + ')));
       const tags=el('div','tags');
       (POS[id]||[]).forEach(p=>tags.appendChild(el('span','tag pos',p)));
+      (WHO[id]||[]).forEach(p=>tags.appendChild(el('span','tag who-tag','For '+p)));
       if(PHOTO.has(id))tags.appendChild(el('span','tag photo','Photo'));
       (code||[]).forEach(c=>tags.appendChild(codeLink(c)));
       if(tags.childNodes.length)t.appendChild(tags);
@@ -305,9 +306,9 @@ function listen(sc){
 function applyTasks(x){
   if(!x||!Array.isArray(x.daily)||!Array.isArray(x.weekly))return;
   const conv=gs=>gs.map(g=>({role:g.role,note:g.note||undefined,day:typeof g.day==='number'?g.day:undefined,items:(g.items||[]).map(i=>[i.id,i.t,i.d||null,i.c&&i.c.length?i.c:undefined])}));
-  const sl={},ph=new Set(),po={};
-  [...x.daily,...x.weekly].forEach(g=>(g.items||[]).forEach(i=>{if(i.p)ph.add(i.id);if(i.s&&i.s.length)sl[i.id]=i.s;if(i.pos&&i.pos.length)po[i.id]=i.pos}));
-  DAILY=conv(x.daily);WEEKLY=conv(x.weekly);SLOTS=sl;PHOTO=ph;POS=po;build('day');build('week');
+  const sl={},ph=new Set(),po={},wh={};
+  [...x.daily,...x.weekly].forEach(g=>(g.items||[]).forEach(i=>{if(i.p)ph.add(i.id);if(i.s&&i.s.length)sl[i.id]=i.s;if(i.pos&&i.pos.length)po[i.id]=i.pos;if(i.who&&i.who.length)wh[i.id]=i.who}));
+  DAILY=conv(x.daily);WEEKLY=conv(x.weekly);SLOTS=sl;PHOTO=ph;POS=po;WHO=wh;build('day');build('week');
 }
 function saveDevice(){if(fb&&UID&&NAME)fb.setDoc(fb.doc(fb.db,'locations',LOC,'devices',UID),{name:NAME,lastSeen:fb.serverTimestamp()}).catch(()=>{})}
 function restoreName(){

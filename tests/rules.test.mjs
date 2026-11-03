@@ -42,6 +42,8 @@ await t('phone can see if it is a manager', assertSucceeds(getDoc(doc(A, 'locati
 await t('phone cannot read the manager list', assertFails(getDocs(collection(A, 'locations/sanford/managers'))));
 await t('phone saves its own first name', assertSucceeds(setDoc(doc(A, 'locations/sanford/devices/uidA'), {name: 'Ana', lastSeen: serverTimestamp()})));
 await t('phone cannot change another phone', assertFails(setDoc(doc(A, 'locations/sanford/devices/uidB'), {name: 'Ana', lastSeen: serverTimestamp()})));
+await t('a manager can see the names on all phones (to assign tasks)', assertSucceeds(getDocs(collection(L, 'locations/sanford/devices'))));
+await t('an employee cannot list the phones', assertFails(getDocs(collection(A, 'locations/sanford/devices'))));
 await t('phone cannot read other phones', assertFails(getDoc(doc(B, 'locations/sanford/devices/uidA'))));
 const tasks = (uid, extra = {}) => ({daily: [{role: 'Open', note: '', day: null, items: []}], weekly: [], positions: ['AM Bartender'], updatedAt: serverTimestamp(), updatedBy: 'Clay', updatedByUid: uid, ...extra});
 await t('a manager can save the task lists', assertSucceeds(setDoc(doc(L, 'locations/sanford/config/tasks'), tasks('TjGZ7fcbmAgo4y2skvQPfuH4fJB2'))));

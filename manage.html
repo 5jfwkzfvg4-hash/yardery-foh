@@ -94,7 +94,7 @@ details .more{display:grid;gap:8px;margin-top:8px}
     <nav role="tablist" id="tabs" hidden>
       <button role="tab" data-tab="daily" aria-selected="true">Daily</button>
       <button role="tab" data-tab="weekly" aria-selected="false">Weekly</button>
-      <button role="tab" data-tab="positions" aria-selected="false">Positions</button>
+      <button role="tab" data-tab="positions" aria-selected="false">Team</button>
     </nav>
   </div>
 </header>
@@ -115,6 +115,8 @@ details .more{display:grid;gap:8px;margin-top:8px}
       <ul class="list" id="posList" style="margin-top:14px"></ul>
       <div class="row" style="margin-top:10px"><input type="text" id="newPos" maxlength="30" placeholder="New position, e.g. PM Bartender" style="flex:1;min-width:0"><button type="button" class="btn primary" id="addPos">Add</button></div>
     </section>
+    <section id="peopleBox" hidden><h2>People</h2><p class="sub">First names remembered on staff phones. Assign someone on a task with “Assign to a person.” A name typed differently on two phones shows twice.</p>
+      <ul class="list" id="peopleList" style="margin-top:14px"></ul></section>
     <p class="foot">Checks already made stay in the records. A removed task disappears from phones; a reworded one keeps its checks. <a href="./">Open the staff page</a></p>
   </div>
 </main>
@@ -140,15 +142,15 @@ if(C.locationName)$('place').textContent=C.locationName+' · Manager';
 function fromBuiltIn(){
   const PH=T.PHOTO||new Set(),SL=T.SLOTS||{};
   const conv=gs=>(gs||[]).map(g=>({role:g.role,note:g.note||'',day:typeof g.day==='number'?g.day:null,
-    items:g.items.map(([id,t,d,c])=>({id,t,d:d||'',c:c||[],p:PH.has(id),s:SL[id]||[],pos:[]}))}));
-  return {daily:conv(T.DAILY),weekly:conv(T.WEEKLY),positions:['AM Bartender']};
+    items:g.items.map(([id,t,d,c])=>({id,t,d:d||'',c:c||[],p:PH.has(id),s:SL[id]||[],pos:[],who:[]}))}));
+  return {daily:conv(T.DAILY),weekly:conv(T.WEEKLY),positions:['AM Bar','PM Bar','AM Server','PM Server','Food Runner']};
 }
 function clean(x){
   const g=gs=>(gs||[]).map(g=>({role:String(g.role||''),note:String(g.note||''),day:typeof g.day==='number'?g.day:null,
-    items:(g.items||[]).map(i=>({id:String(i.id),t:String(i.t||''),d:String(i.d||''),c:(i.c||[]).map(String),p:!!i.p,s:(i.s||[]).map(String),pos:(i.pos||[]).map(String)}))}));
+    items:(g.items||[]).map(i=>({id:String(i.id),t:String(i.t||''),d:String(i.d||''),c:(i.c||[]).map(String),p:!!i.p,s:(i.s||[]).map(String),pos:(i.pos||[]).map(String),who:(i.who||[]).map(String)}))}));
   return {daily:g(x.daily),weekly:g(x.weekly),positions:(x.positions||[]).map(String)};
 }
-let M=null, saved='', fb=null, UID='', NAME='', remote=null, fromSaved=false;
+let PEOPLE=[], M=null, saved='', fb=null, UID='', NAME='', remote=null, fromSaved=false;
 try{NAME=localStorage.getItem('foh-name')||''}catch(e){}
 const snap=()=>JSON.stringify(M);
 function dirty(){return M&&snap()!==saved}
@@ -192,7 +194,7 @@ function renderList(list){
     if(!g.items.length)ul.appendChild(el('li','task hint','No tasks yet.'));
     box.appendChild(ul);
     const add=el('button','btn add','+ Add task');add.type='button';
-    add.addEventListener('click',()=>{const it={id:newId(),t:'',d:'',c:[],p:false,s:[],pos:[]};g.items.push(it);rerender('#t-'+it.id)});
+    add.addEventListener('click',()=>{const it={id:newId(),t:'',d:'',c:[],p:false,s:[],pos:[],who:[]};g.items.push(it);rerender('#t-'+it.id)});
     box.appendChild(add);mount.appendChild(box);
   });
 }
@@ -207,6 +209,14 @@ function taskRow(list,gi,ii,g,it){
   if(!M.positions.length)pr.appendChild(el('span','hint','Add positions on the Positions tab'));
   M.positions.forEach(p=>{const c=el('button','chip',p);c.type='button';c.setAttribute('aria-pressed',String(it.pos.includes(p)));
     c.addEventListener('click',()=>{const on=it.pos.includes(p);it.pos=on?it.pos.filter(x=>x!==p):[...it.pos,p];c.setAttribute('aria-pressed',String(!on));mark()});pr.appendChild(c)});
+  const pp=el('details','people');const ps=el('summary',null,'');
+  const sumTxt=()=>{ps.textContent=it.who.length?'Assigned to: '+it.who.join(', '):'Assign to a person'};sumTxt();pp.appendChild(ps);
+  const pr2=el('div','row');pr2.style.marginTop='8px';
+  const names=[...new Set([...PEOPLE.map(x=>x.name),...it.who])];
+  if(!names.length)pr2.appendChild(el('span','hint','Names show here once staff open FOH on their phones.'));
+  names.forEach(n=>{const c=el('button','chip',n);c.type='button';c.setAttribute('aria-pressed',String(it.who.includes(n)));
+    c.addEventListener('click',()=>{const on=it.who.includes(n);it.who=on?it.who.filter(x=>x!==n):[...it.who,n];c.setAttribute('aria-pressed',String(!on));sumTxt();mark()});pr2.appendChild(c)});
+  pp.appendChild(pr2);
   const more=el('details');more.appendChild(el('summary',null,'Photo & Food Code'));
   const mg=el('div','more');
   const pl=el('label','check');const pc=el('input');pc.type='checkbox';pc.checked=it.p;pc.addEventListener('change',()=>{it.p=pc.checked;mark()});pl.append(pc,el('span',null,'Photo required'));
@@ -226,7 +236,7 @@ function taskRow(list,gi,ii,g,it){
   const rm=el('button','btn danger','Remove');rm.type='button';
   armed(rm,'Tap again to remove',()=>{g.items.splice(ii,1);rerender();toast('Task removed. Tap Save to publish.')});
   ctl.append(mv,rm);
-  li.append(t,d,pr,more,ctl);return li;
+  li.append(t,d,pr,pp,more,ctl);return li;
 }
 function renderPositions(){
   const ul=$('posList');ul.replaceChildren();
@@ -247,7 +257,15 @@ function grow(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px
 document.addEventListener('input',e=>{if(e.target.tagName==='TEXTAREA')grow(e.target)});
 function growAll(){document.querySelectorAll('#editor section:not([hidden]) textarea').forEach(grow)}
 window.addEventListener('resize',growAll);
-function render(){renderList('daily');renderList('weekly');renderPositions();requestAnimationFrame(growAll)}
+function renderPeople(){
+  const ul=$('peopleList');ul.replaceChildren();
+  if(!PEOPLE.length)ul.appendChild(el('li','pos-row hint','No one yet. Names appear when staff open FOH and type their first name.'));
+  const day=new Intl.DateTimeFormat([],{month:'short',day:'numeric',timeZone:C.timeZone||'America/New_York'});
+  PEOPLE.forEach(x=>{const li=el('li','pos-row');li.appendChild(el('span','ttl',x.name));li.lastChild.style.flex='1';
+    const n=allGroups().reduce((s,g)=>s+g.g.items.filter(i=>i.who.includes(x.name)).length,0);
+    li.appendChild(el('span','hint',n+' tasks'+(x.seen?' · last seen '+day.format(x.seen):'')));ul.appendChild(li)});
+}
+function render(){renderPeople();renderList('daily');renderList('weekly');renderPositions();requestAnimationFrame(growAll)}
 $('addSection').addEventListener('click',()=>{M.daily.push({role:'New section',note:'',day:null,items:[]});render();mark();
   const ins=$('dailyEd').querySelectorAll('.ghead input');const last=ins[ins.length-1];last.focus();last.select()});
 $('addPos').addEventListener('click',()=>{const n=$('newPos').value.trim();
@@ -280,7 +298,7 @@ $('save').addEventListener('click',()=>{
 });
 
 const tabs=[...document.querySelectorAll('#tabs button')];
-function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));['daily','weekly','positions'].forEach(s=>{$(s).hidden=s!==id});window.scrollTo(0,0);requestAnimationFrame(growAll)}
+function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));['daily','weekly','positions'].forEach(s=>{$(s).hidden=s!==id});$('peopleBox').hidden=id!=='positions';window.scrollTo(0,0);requestAnimationFrame(growAll)}
 tabs.forEach(t=>t.addEventListener('click',()=>show(t.dataset.tab)));
 
 function gate(msg,showId){$('gateMsg').textContent=msg;$('gateId').hidden=!showId;if(showId)$('uid').textContent=UID}
@@ -310,6 +328,12 @@ async function connect(){
       const listed=Array.isArray(C.managers)&&C.managers.includes(UID);
       const decide=isMgr=>{
         if(!isMgr){gate('This page is for managers. To get access, send this device ID to the owner:',true);return}
+        fb.onSnapshot(fb.collection(db,'locations',LOC,'devices'),q=>{
+          const by={};q.forEach(d=>{const x=d.data({serverTimestamps:'estimate'});const n=String(x.name||'').trim();if(!n)return;
+            const k=n.toLowerCase(),seen=x.lastSeen&&x.lastSeen.toDate?x.lastSeen.toDate():null;
+            if(!by[k]||(seen&&(!by[k].seen||seen>by[k].seen)))by[k]={name:n,seen}});
+          PEOPLE=Object.values(by).sort((a,b)=>a.name.localeCompare(b.name));if(M)render();
+        },()=>{});
         fb.onSnapshot(fb.doc(db,'locations',LOC,'config','tasks'),s=>{
           const data=s.exists()?clean(s.data()):null;
           if(!M){fromSaved=!!data;M=data||fromBuiltIn();saved=snap();openEditor();return}

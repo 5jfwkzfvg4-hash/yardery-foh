@@ -10,7 +10,10 @@ through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff 
 - **Daily / Weekly tabs:** change a task's wording or details, ↑ ↓ to reorder, **Move to…** another section or day,
   **Remove** (tap twice), **+ Add task**, and tap a **position** to assign it. Daily sections can be added, renamed,
   reordered and removed; Weekly has one section per day. **Photo & Food Code** holds the Photo tag and code links.
-- **Positions tab:** add, rename (renames it on every task) or remove positions.
+- **Assign to a person:** on any task, open **Assign to a person** and tap a name. Names come from the phones
+  that have opened FOH (first names they typed). Staff see a "For Ana" tag on that task.
+- **Team tab:** add, rename (renames it on every task) or remove positions (AM Bar, PM Bar, AM Server, PM Server,
+  Food Runner), and see everyone whose phone has opened FOH, with how many tasks each person has.
 - Nothing changes for staff until you tap **Save**; then every phone shows the new list within seconds.
   **Discard** throws away unsaved edits. Every save is also kept as a copy (Firestore `taskHistory`), so an
   older list can be brought back.
