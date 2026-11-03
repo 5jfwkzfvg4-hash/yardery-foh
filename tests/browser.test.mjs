@@ -8,8 +8,11 @@ const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 
 const html = readFileSync('index.html', 'utf8');
 const ver = html.match(/firebasejs\/([\d.]+)\//)[1];
-const testHtml = html.replace("apiKey:''", "apiKey:'demo-key'").replace("projectId:''", "projectId:'demo-yardery'").replace("authDomain:''", "authDomain:'demo-yardery.firebaseapp.com'");
-const server = http.createServer((q, r) => { r.writeHead(200, {'content-type': 'text/html; charset=utf-8'}); r.end(q.url.includes('noconfig') ? html : testHtml); }).listen(0);
+// The tests never touch the real database: the page gets a demo project and talks to the local emulator.
+const testHtml = html.replace(/firebase:\{[\s\S]*?\n  \},/, "firebase:{apiKey:'demo-key',authDomain:'demo-yardery.firebaseapp.com',projectId:'demo-yardery',appId:'demo'},");
+const noConfigHtml = html.replace(/firebase:\{[\s\S]*?\n  \},/, "firebase:{apiKey:'',projectId:''},");
+if (testHtml === html || noConfigHtml === html) throw new Error('config block not found');
+const server = http.createServer((q, r) => { r.writeHead(200, {'content-type': 'text/html; charset=utf-8'}); r.end(q.url.includes('noconfig') ? noConfigHtml : testHtml); }).listen(0);
 const URL = `http://127.0.0.1:${server.address().port}/`;
 const sdkDir = new URL_('../node_modules/firebase/', import.meta.url);
 function URL_(p, b) { return new globalThis.URL(p, b); }
