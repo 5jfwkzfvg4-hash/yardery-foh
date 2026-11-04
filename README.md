@@ -55,7 +55,7 @@ What protects the data is `firestore.rules` (published in the Firebase console),
 - `tasks.js` — the built-in task lists (used until the first Save on the manager page).
 - `firestore.rules` — the security rules (paste into Firebase → Firestore → Rules → Publish whenever this file changes).
 - `NEW-LOCATION.md` — one-page checklist for opening a new store.
-- `FOH-QR-Poster.pdf` — printable poster (Letter) with the staff link's QR code. For another store:
+- `FOH-QR-Poster.pdf` (color) and `FOH-QR-Poster-BW.pdf` (black and white) — printable posters (Letter) with the staff link's QR code. For another store:
   `node tools/poster.mjs <store link> "<store name>"`.
 - `tests/` — automatic checks (for whoever maintains the code): `npm install`, then `npm test`
   (needs Java 11+; runs everything against Firebase's local emulator, never the real database).

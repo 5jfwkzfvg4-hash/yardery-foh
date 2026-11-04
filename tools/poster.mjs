@@ -1,5 +1,6 @@
-// Makes the printable QR poster (Letter size): node tools/poster.mjs [staff link] [location name]
-// Writes FOH-QR-Poster.pdf and FOH-QR-Poster.png. For a new store, run it with that store's link.
+// Makes the printable QR posters (Letter size): node tools/poster.mjs [staff link] [location name]
+// Writes FOH-QR-Poster.pdf/.png (color) and FOH-QR-Poster-BW.pdf/.png (black and white, no ink-heavy fills).
+// For a new store, run it with that store's link.
 import {readFileSync, writeFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 const require = createRequire(import.meta.url);
@@ -9,11 +10,11 @@ const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 const link = process.argv[2] || 'https://5jfwkzfvg4-hash.github.io/yardery-foh/';
 const place = process.argv[3] || 'The Yardery';
 const font = f => 'data:font/woff2;base64,' + readFileSync(require.resolve('@fontsource/' + f)).toString('base64');
-const qr = await QR.toString(link, {type: 'svg', errorCorrectionLevel: 'M', margin: 0, color: {dark: '#1E241A', light: '#FFFFFF'}});
+const qrFor = dark => QR.toString(link, {type: 'svg', errorCorrectionLevel: 'M', margin: 0, color: {dark, light: '#FFFFFF'}});
 const shown = link.replace(/^https?:\/\//, '').replace(/\/$/, '');
 const esc = s => s.replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
 
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+const page_ = (qr, bw) => `<!doctype html><html><head><meta charset="utf-8"><style>
 @font-face{font-family:Bitter;font-weight:700;src:url(${font('bitter/files/bitter-latin-700-normal.woff2')})}
 @font-face{font-family:Bitter;font-weight:800;src:url(${font('bitter/files/bitter-latin-800-normal.woff2')})}
 @font-face{font-family:PS;font-weight:400;src:url(${font('public-sans/files/public-sans-latin-400-normal.woff2')})}
@@ -35,6 +36,7 @@ li{background:#fff;border:1px solid #DCDFD5;border-radius:.14in;padding:.16in .1
 li b{display:block;font:800 22pt/1 Bitter,serif;color:#E4A821;margin-bottom:.06in}
 li strong{font-weight:700}
 footer{padding:.2in .6in .3in;font:400 11pt/1.4 PS;color:#5B6653;text-align:center}
+${bw ? `body{background:#fff;color:#000}header{background:#fff;color:#000;border-bottom:.06in solid #000}header p{opacity:1}h2{color:#000}.qr{border:2px solid #000}.url,footer{color:#000}li{border:1.5px solid #000}li b{color:#000}` : ''}
 </style></head><body>
 <header><h1>FOH</h1><p>${esc(place)} · Cleaning checklists</p></header>
 <main>
@@ -51,11 +53,14 @@ footer{padding:.2in .6in .3in;font:400 11pt/1.4 PS;color:#5B6653;text-align:cent
 </body></html>`;
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? {executablePath: process.env.CHROMIUM_PATH} : {});
+for (const [bw, name] of [[false, 'FOH-QR-Poster'], [true, 'FOH-QR-Poster-BW']]) {
 const page = await browser.newPage({viewport: {width: 816, height: 1056}, deviceScaleFactor: 2});
-await page.setContent(html); await page.evaluate(() => document.fonts.ready);
+await page.setContent(page_(await qrFor(bw ? '#000000' : '#1E241A'), bw)); await page.evaluate(() => document.fonts.ready);
 const over = await page.evaluate(() => document.documentElement.scrollHeight > 1056);
 const hgt = await page.evaluate(() => document.documentElement.scrollHeight); if (over) throw new Error('poster does not fit on one page: ' + hgt);
-await page.pdf({path: 'FOH-QR-Poster.pdf', width: '8.5in', height: '11in', printBackground: true});
-await page.screenshot({path: 'FOH-QR-Poster.png'});
+await page.pdf({path: name + '.pdf', width: '8.5in', height: '11in', printBackground: true});
+await page.screenshot({path: name + '.png'});
+await page.close();
+}
 await browser.close();
-console.log('Wrote FOH-QR-Poster.pdf and FOH-QR-Poster.png for', link);
+console.log('Wrote FOH-QR-Poster(.pdf/.png) and FOH-QR-Poster-BW(.pdf/.png) for', link);
