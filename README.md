@@ -43,6 +43,13 @@ photo task shows **View photo** for the whole team.
   Storage now requires the paid plan. At ~20 photos a day the free 1 GB lasts roughly 1.5–2 years; ask Claude
   before then about exporting old photos or moving to Storage.
 
+## Closing countdown, lock and nightly PDF
+- **Schedule** (`config.js` → `schedule`): closed Monday (no checklists); close Tue–Thu 10 PM, Fri–Sat midnight,
+  Sun 8 PM. At closing a 30-minute countdown shows on the staff page; then the day's checklist locks. The database
+  refuses changes after the lock (rules `lockTs()`/`openDay()`; keep them in step if hours change).
+- **Nightly PDF**: a Google Apps Script in Clay's account (`apps-script/Code.gs`, setup in `FOH-NIGHTLY-PDF.md`)
+  saves a PDF of done / not done with photos to Drive "11 FOH Cleaning Checklists" and adds it to the recap draft.
+
 ## Where the records are
 Firestore → `locations/{locationId}/days/{date}/checks/{taskId}` and `.../weeks/{Monday's date}/checks/{taskId}`.
 Each check: task id, first name, device id, server time, tap time (and photo ids for Photo tasks). Nothing deletes old days or weeks.
@@ -64,6 +71,8 @@ What protects the data is `firestore.rules` (published in the Firebase console),
 - `config.js` — **the location settings** (name, id, time zone, cutoff hour, Firebase, managers). The only file a new store changes.
 - `index.html` — the staff page. `manage.html` — the manager page (task editor).
 - `tasks.js` — the built-in task lists (used until the first Save on the manager page).
+- `report.js` — closing schedule logic and the nightly PDF layout (shared by the staff page and the script).
+- `apps-script/Code.gs` — the nightly PDF script (runs in Google Apps Script; see `FOH-NIGHTLY-PDF.md`).
 - `firestore.rules` — the security rules (paste into Firebase → Firestore → Rules → Publish whenever this file changes).
 - `NEW-LOCATION.md` — one-page checklist for opening a new store.
 - `FOH-QR-Poster.pdf` (color) and `FOH-QR-Poster-BW.pdf` (black and white) — printable posters (Letter) with the staff link's QR code. For another store:

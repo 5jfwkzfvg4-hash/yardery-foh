@@ -7,6 +7,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <script src="config.js"></script>
 <script src="tasks.js"></script>
+<script src="report.js"></script>
 <meta name="format-detection" content="telephone=no">
 <meta property="og:title" content="FOH">
 <meta property="og:description" content="The Yardery FOH daily and weekly cleaning checklists">
@@ -95,6 +96,11 @@ a.tag{color:var(--pine);border-color:currentColor}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100% - 32px)}
 .toast.show{opacity:1}
 .mgr-home{margin:14px 0 0}
+.lockbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hdr,98px) + 6px);z-index:4;margin:0 0 12px;padding:10px 14px;border-radius:12px;font:600 14.5px/1.35 var(--body);background:var(--panel);border:1px solid var(--line);color:var(--ink)}
+.lockbar.soon{background:var(--amber);border-color:var(--amber);color:#1E241A}
+.lockbar strong{font-variant-numeric:tabular-nums;font-size:17px}
+.shut .box{opacity:.45;cursor:not-allowed}
+.closedmsg{margin:18px 0;padding:16px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
 /* camera: live view -> Take photo -> preview with Retake / Use photo (camera only, never the camera roll) */
 .cam{position:fixed;inset:0;z-index:30;background:#000;color:#fff;display:flex;flex-direction:column;padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));gap:12px}
 .cam-top{display:flex;align-items:flex-start;gap:12px}
@@ -131,6 +137,7 @@ a.tag{color:var(--pine);border-color:currentColor}
 
 <main class="wrap">
   <p class="offline" id="offline" role="status" hidden>Offline — will sync</p>
+  <div class="lockbar" id="lockbar" role="status" hidden></div>
   <div class="top" hidden>
     <div class="who-line">Checking off as <strong id="whoName"></strong><button type="button" class="linkbtn" id="changeName">Not you?</button><a class="linkbtn mgr" href="manage.html" hidden>Manager page</a></div>
   </div>
@@ -154,6 +161,7 @@ a.tag{color:var(--pine);border-color:currentColor}
     <h2>Daily</h2>
     <p class="sub" id="dayDate"></p>
     <div class="progress"><div class="bar"><i id="dayBar"></i></div><span class="count" id="dayCount"></span></div>
+    <div class="closedmsg" id="dayClosed" hidden></div>
     <div id="dailyLists"></div>
     <button type="button" class="reset" id="dayReset">Clear today’s checks</button>
   </section>
@@ -162,6 +170,7 @@ a.tag{color:var(--pine);border-color:currentColor}
     <h2>Weekly</h2>
     <p class="sub" id="weekDate"></p>
     <div class="progress"><div class="bar"><i id="weekBar"></i></div><span class="count" id="weekCount"></span></div>
+    <div class="closedmsg" id="weekClosed" hidden></div>
     <div id="weeklyLists"></div>
     <div class="note"><strong>Every day:</strong> Sweep and mop behind all bars. Mats are pulled and cleaned underneath. Those are on the Daily tab.</div>
     <button type="button" class="reset" id="weekReset">Clear this week’s checks</button>
@@ -217,6 +226,15 @@ function shiftNow(){
   const u=new Date(Date.UTC(+p.year,+p.month-1,+p.day));if(+p.hour%24<LATE_CLOSE_HOUR)u.setUTCDate(u.getUTCDate()-1);return u;
 }
 const key=u=>u.toISOString().slice(0,10);
+const R=window.FOHReport;
+function tzOff(ms){const p={};new Intl.DateTimeFormat('en-US',{timeZone:TZ,hourCycle:'h23',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric',second:'numeric'}).formatToParts(new Date(ms)).forEach(x=>{p[x.type]=x.value});
+  return Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute,+p.second)-ms}
+let lockDoc=false; // set when the day's lock record exists in the database
+function dayState(){const st=R.state(DAY,Date.now(),C,tzOff);return lockDoc&&st!=='closed'?'locked':st}
+function canEdit(){const st=dayState();
+  if(st==='closed'){toast('We’re closed today. No checklist on '+R.DAYS[DOW]+'s.');return false}
+  if(st==='locked'){toast('Tonight’s checklist is locked. A new one starts at '+(LATE_CLOSE_HOUR%12||12)+' AM.');return false}
+  return true}
 let shift,mon,DAY='',WEEK='',DOW=0;
 function setDates(){
   const s=shiftNow(),d=key(s);if(d===DAY)return false;
@@ -284,6 +302,7 @@ function build(sc){
       if(rec&&rec.photos&&rec.photos.length){const v=el('button','photo-link',rec.photos.length>1?'View photos ('+rec.photos.length+')':'View photo');v.type='button';
         v.addEventListener('click',()=>viewPhotos(title,rec));t.appendChild(v)}
       box.addEventListener('click',()=>{
+        if(!canEdit())return;
         if(!fb||!UID){toast(fbMsg);return}
         const cur=live[sc][id],ref=fb.doc(checksCol(sc),id);
         if(cur){
@@ -308,12 +327,14 @@ const DAYNAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Sat
 function renderHome(){
   const dd=live.day;let tot=0,dn=0;const who=[];
   DAILY.forEach(g=>g.items.forEach(([id])=>{tot++;const r=dd[id];if(r){dn++;if(who.indexOf(r.i)<0)who.push(r.i)}}));
-  $('sumDayPct').textContent=(tot?Math.round(dn/tot*100):0)+'%';
+  const closed=dayState()==='closed';
+  $('sumDayPct').textContent=closed?'Closed':(tot?Math.round(dn/tot*100):0)+'%';
   const w=$('sumDayWho');w.replaceChildren();
-  if(who.length)who.forEach(i=>w.appendChild(el('span','chip',i)));else w.appendChild(el('span','meta','No one yet'));
+  if(closed){}else if(who.length)who.forEach(i=>w.appendChild(el('span','chip',i)));else w.appendChild(el('span','meta','No one yet'));
   const g=WEEKLY.find(x=>x.day===DOW);const wd=live.week;
   $('sumWeekLbl').textContent='Weekly · '+DAYNAMES[DOW];
-  if(g){const n=g.items.filter(([id])=>wd[id]).length;$('sumWeekPct').textContent=Math.round(n/g.items.length*100)+'%'}
+  if(closed)$('sumWeekPct').textContent='Closed';
+  else if(g){const n=g.items.filter(([id])=>wd[id]).length;$('sumWeekPct').textContent=Math.round(n/g.items.length*100)+'%'}
   else $('sumWeekPct').textContent='—';
 }
 Object.keys(scopes).forEach(sc=>{
@@ -322,6 +343,7 @@ Object.keys(scopes).forEach(sc=>{
   b.addEventListener('click',()=>{
     if(!b.classList.contains('arm')){b.classList.add('arm');b.dataset.t=b.textContent;b.textContent='Tap again to clear';armT=setTimeout(()=>{b.classList.remove('arm');b.textContent=b.dataset.t},4000);return}
     clearTimeout(armT);b.classList.remove('arm');b.textContent=b.dataset.t;
+    if(!canEdit())return;
     if(!fb||!UID){toast(fbMsg);return}
     const all=Object.entries(live[sc]),mine=all.filter(([,r])=>isManager||r.uid===UID);
     mine.forEach(([id])=>fb.deleteDoc(fb.doc(checksCol(sc),id)).catch(saveErr));
@@ -383,8 +405,9 @@ function takePhotos(title,slots,done){
 function saveCheck(sc,id,imgs){
   const b=fb.writeBatch(fb.db),ids=[],sheet=scopes[sc].path();
   imgs.forEach((img,i)=>{const r=fb.doc(fb.collection(fb.db,'locations',LOC,'photos'));ids.push(r.id);
-    b.set(r,{task:id,period:sheet[0],sheet:sheet[1],slot:(SLOTS[id]||[])[i]||'',name:NAME,uid:UID,at:fb.serverTimestamp(),img})});
-  const rec={task:id,name:NAME,uid:UID,at:fb.serverTimestamp(),tappedAt:fb.Timestamp.now()};
+    b.set(r,{task:id,period:sheet[0],sheet:sheet[1],day:DAY,slot:(SLOTS[id]||[])[i]||'',name:NAME,uid:UID,at:fb.serverTimestamp(),img})});
+  if(!canEdit())return;
+  const rec={task:id,name:NAME,uid:UID,day:DAY,at:fb.serverTimestamp(),tappedAt:fb.Timestamp.now()};
   if(ids.length){rec.photos=ids;rec.slots=imgs.map((_,i)=>(SLOTS[id]||[])[i]||'')}
   b.set(fb.doc(checksCol(sc),id),rec);
   b.commit().then(()=>{if(ids.length)toast(ids.length>1?'Photos saved.':'Photo saved.')}).catch(saveErr);
@@ -446,7 +469,7 @@ async function connect(){
       if(!user){signIn();return}
       if(UID===user.uid)return;
       UID=user.uid;fbMsg='Connecting to the team list… try again in a moment.';
-      listen('day');listen('week');
+      listen('day');listen('week');listenLock();
       fb.onSnapshot(fb.doc(db,'locations',LOC,'config','tasks'),s=>{if(s.exists())applyTasks(s.data())},()=>{});
       const listed=Array.isArray(C.managers)&&C.managers.includes(UID);isManager=listed;
       showMgr();
@@ -456,8 +479,36 @@ async function connect(){
     window.addEventListener('online',()=>{if(!UID)signIn()});
   }catch(e){fbMsg='Couldn’t load the team list. Check your signal and reload.';toast(fbMsg);console.warn(e)}
 }
+/* Closing countdown and lock (schedule in config.js). Checklists are hidden on closed days. */
+let lastState='',lockWritten='';
+function tick(){
+  document.documentElement.style.setProperty('--hdr',document.querySelector('header').offsetHeight+'px');
+  const st=dayState(),bar=$('lockbar'),now=Date.now();
+  if(st==='countdown'){const left=Math.max(0,R.lockAt(DAY,C,tzOff)-now),m=Math.floor(left/60000),s=Math.floor(left/1000)%60;
+    bar.className='lockbar soon';bar.replaceChildren('Checklist locks in ',el('strong',null,m+':'+String(s).padStart(2,'0')),'. Finish and check off your tasks.');bar.hidden=false}
+  else if(st==='locked'){bar.className='lockbar';bar.textContent='Tonight’s checklist is locked. A new one starts at '+(LATE_CLOSE_HOUR%12||12)+' AM.';bar.hidden=false}
+  else if(st==='closed'){bar.className='lockbar';bar.textContent='We’re closed '+R.DAYS[DOW]+'s. No checklists today.';bar.hidden=false}
+  else bar.hidden=true;
+  document.querySelector('main').classList.toggle('shut',st==='locked'||st==='closed');
+  if(st!==lastState){
+    const closed=st==='closed';
+    ['dailyLists','weeklyLists','dayReset','weekReset','dayBar','weekBar'].forEach(i=>{const e=$(i);(i.endsWith('Bar')?e.parentNode.parentNode:e).hidden=closed});
+    $('dayClosed').hidden=$('weekClosed').hidden=!closed;
+    $('dayClosed').textContent=$('weekClosed').textContent='We’re closed '+R.DAYS[DOW]+'s, so there’s no checklist today.';
+    if(lastState){renderHome()}lastState=st;
+    if(st==='locked'&&!document.getElementById('cam').hidden){$('camClose').click()}
+  }
+  /* at lock time any open phone records the lock, so late changes are refused by the database */
+  if(st==='locked'&&!lockDoc&&fb&&UID&&lockWritten!==DAY&&now>=R.lockAt(DAY,C,tzOff)){lockWritten=DAY;
+    fb.setDoc(fb.doc(fb.db,'locations',LOC,'locks',DAY),{at:fb.serverTimestamp()}).catch(()=>{})}
+}
+let unLock=null;
+function listenLock(){if(unLock)unLock();lockDoc=false;
+  unLock=fb.onSnapshot(fb.doc(fb.db,'locations',LOC,'locks',DAY),s=>{lockDoc=s.exists();tick()},()=>{})}
+setInterval(tick,1000);
+
 /* New day at the cutoff hour, new week on Monday: switch sheets without a reload */
-function rollover(){if(setDates()){if(fb&&UID){listen('day');listen('week')}else{build('day');build('week')}}}
+function rollover(){if(setDates()){lockDoc=false;lastState='';if(fb&&UID){listen('day');listen('week');listenLock()}else{build('day');build('week')}tick()}}
 setInterval(rollover,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)rollover()});
 
 function net(){$('offline').hidden=navigator.onLine}
@@ -469,7 +520,7 @@ tabs.forEach(t=>t.addEventListener('click',()=>{show(t.dataset.tab);try{history.
 function route(){const h=(location.hash||'').slice(1);if(h==='home'||h==='daily'||h==='weekly')show(h)}
 document.querySelectorAll('.sum').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);try{history.replaceState(null,'','#'+b.dataset.go)}catch(e){}}));
 route();window.addEventListener('hashchange',route);
-connect();
+tick();connect();
 </script>
 
 </body>

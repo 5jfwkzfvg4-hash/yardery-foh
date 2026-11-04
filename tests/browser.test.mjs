@@ -15,7 +15,7 @@ const noCfg = cfg.replace(/firebase:\{[\s\S]*?\n  \},/, "firebase:{apiKey:'',pro
 if (testCfg === cfg || noCfg === cfg) throw new Error('config block not found');
 const server = http.createServer((q, r) => {
   const path = q.url.split('?')[0], file = path.replace(/^\/(noconfig\/)?/, '') || 'index.html';
-  if (!/^(index\.html|manage\.html|config\.js|tasks\.js)$/.test(file)) { r.writeHead(404); return r.end(); }
+  if (!/^(index\.html|manage\.html|config\.js|tasks\.js|report\.js)$/.test(file)) { r.writeHead(404); return r.end(); }
   const body = file === 'config.js' ? (path.startsWith('/noconfig/') ? noCfg : testCfg) : readFileSync(file);
   r.writeHead(200, {'content-type': file.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8'}); r.end(body);
 }).listen(0);
@@ -31,6 +31,7 @@ const ok = (c, m) => { if (!c) throw new Error(m); };
 // A fake camera (moving test pattern) stands in for the phone camera.
 const browser = await chromium.launch({args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(process.env.CHROMIUM_PATH ? {executablePath: process.env.CHROMIUM_PATH} : {})});
 const errors = [];
+const OPEN_TIME = '2026-11-03T16:00:00Z';   // Tue Nov 3, 11 AM in Sanford
 async function open(label, opts, url = URL + '?emulator=1') {
   const ctx = await browser.newContext(opts);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
@@ -39,6 +40,7 @@ async function open(label, opts, url = URL + '?emulator=1') {
   const page = await ctx.newPage();
   page.on('console', m => { if (m.type() === 'error' && !/fonts\.g|ERR_FAILED|Failed to load resource/.test(m.text() + (m.location().url || ''))) errors.push(label + ': ' + m.text()); });
   page.on('pageerror', e => errors.push(label + ': ' + e.message));
+  await page.clock.setFixedTime(new Date(OPEN_TIME));   // a Tuesday morning, so the checklist is open
   await page.goto(url);
   return {ctx, page};
 }
@@ -210,6 +212,47 @@ await t('no sideways scrolling at 390 px and desktop', async () => {
   await pa.click('#tab-daily'); await pa.screenshot({path: 'tests/shots/phone-daily.png'});
   await pa.click('#tab-home'); await pa.screenshot({path: 'tests/shots/phone-home.png'});
   await pb.click('#tab-home'); await pb.screenshot({path: 'tests/shots/desktop-home.png'});
+});
+
+// Closing countdown and lock (Tue closes 10 PM, locks 10:30 PM; closed Mondays)
+async function at(iso) {
+  const ctx = await browser.newContext(phone); await ctx.route(/fonts\.|gstatic/, r => r.abort());
+  await ctx.addInitScript(() => { try { localStorage.setItem('foh-name', 'Dee'); } catch (e) {} });
+  const p = await ctx.newPage(); p.on('pageerror', e => errors.push('at: ' + e.message));
+  await p.clock.setFixedTime(new Date(iso)); await p.goto(URL + 'noconfig/#daily'); await p.waitForTimeout(300); return p;
+}
+await t('before closing: no countdown', async () => { const p = await at('2026-11-04T01:59:00Z'); ok(await p.isHidden('#lockbar'), 'bar shown'); await p.context().close(); });
+await t('10:10 PM Tuesday: countdown shows 20:00 left', async () => {
+  const p = await at('2026-11-04T03:10:00Z'); const txt = await p.textContent('#lockbar');
+  ok(await p.isVisible('#lockbar') && txt.includes('locks in 20:00'), txt);
+  const w = await p.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth]); ok(w[0] <= w[1], 'sideways scroll during countdown ' + w);
+  await p.screenshot({path: 'tests/shots/phone-countdown.png'}); await p.context().close();
+});
+await t('12:15 AM Saturday: Friday\'s countdown (closes at midnight) shows 15:00', async () => {
+  const p = await at('2026-11-07T05:15:00Z'); ok((await p.textContent('#lockbar')).includes('locks in 15:00'), await p.textContent('#lockbar'));
+  ok((await p.textContent('#dayDate')).startsWith('Friday'), 'not Friday'); await p.context().close();
+});
+await t('10:31 PM Tuesday: locked; tapping a task says so and changes nothing', async () => {
+  const p = await at('2026-11-04T03:31:00Z'); ok((await p.textContent('#lockbar')).includes('locked'), await p.textContent('#lockbar'));
+  await p.click('#chk-o-dust'); await p.waitForSelector('.toast.show'); ok((await p.textContent('#toast')).includes('locked'), await p.textContent('#toast'));
+  ok(await p.isHidden('#cam'), 'camera opened'); await p.context().close();
+});
+await t('Monday: closed, no checklists, Home says Closed', async () => {
+  const p = await at('2026-11-02T17:00:00Z'); ok(await p.isHidden('#dailyLists') && await p.isVisible('#dayClosed'), 'lists shown');
+  await p.click('#tab-home'); ok((await p.textContent('#sumDayPct')) === 'Closed', await p.textContent('#sumDayPct'));
+  await p.screenshot({path: 'tests/shots/phone-monday.png'}); await p.context().close();
+});
+await t('a phone open at lock time records the lock; then the database refuses changes', async () => {
+  const H = {Authorization: 'Bearer owner'};
+  const r = await fetch('http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/locks/2026-11-03', {headers: H});
+  ok(r.status === 404, 'lock exists early');
+  const ctx = await browser.newContext(phone); await ctx.route(/fonts\./, r => r.abort());
+  await ctx.route(new RegExp(`www\\.gstatic\\.com/firebasejs/${ver.replace(/\./g, '\\.')}/`), r =>
+    r.fulfill({contentType: 'text/javascript', body: readFileSync(new globalThis.URL(r.request().url().split('/').pop(), sdkDir))}));
+  const p = await ctx.newPage(); await p.clock.setFixedTime(new Date('2026-11-04T03:31:00Z'));
+  await p.goto(URL + '?emulator=1#daily'); await p.fill('#firstName', 'Cy'); await p.click('#setupForm .go');
+  let found = false; for (let i = 0; i < 40 && !found; i++) { await p.waitForTimeout(250); found = (await fetch('http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/locks/2026-11-03', {headers: H})).status === 200; }
+  ok(found, 'no lock record'); await ctx.close();
 });
 
 // Day rules in America/New_York: before 5 AM is still the previous day; week starts Monday.

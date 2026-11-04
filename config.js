@@ -18,5 +18,10 @@ window.FOH_CONFIG={
   managers:[                        // manager device ids (can uncheck anyone). Must match managerIds() in firestore.rules.
     'TjGZ7fcbmAgo4y2skvQPfuH4fJB2'   // Clay
   ],
+  schedule:{                        // closed days and closing times (0=Sunday … 6=Saturday; 24 = midnight).
+    closedDays:[1],                 // Monday: no checklists
+    closeHour:{0:20, 2:22, 3:22, 4:22, 5:24, 6:24},
+    lockMinutes:30                  // countdown after closing; then the checklist locks and the nightly PDF is made
+  },                                // Change firestore.rules lockTs() too if closing times change.
   appCheckSiteKey:''                // optional extra lock (reCAPTCHA v3 site key); leave empty unless set up
 };

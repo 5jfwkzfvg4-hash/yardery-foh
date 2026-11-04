@@ -11,7 +11,7 @@ const anon = env.unauthenticatedContext().firestore();
 await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), 'locations/sanford/managers/uidM'), {name: 'Clay'}));
 
 const P = 'locations/sanford/days/2026-11-03/checks/';
-const check = (uid, task, extra = {}) => ({task, name: 'Ana', uid, at: serverTimestamp(), tappedAt: Timestamp.now(), ...extra});
+const check = (uid, task, extra = {}) => ({task, name: 'Ana', uid, day: '2026-11-03', at: serverTimestamp(), tappedAt: Timestamp.now(), ...extra});
 let n = 0, bad = 0;
 async function t(name, p) { n++; try { await p; console.log('PASS', name); } catch (e) { bad++; console.log('FAIL', name, '-', e.message); } }
 
@@ -57,7 +57,7 @@ await t('a manager saves a history copy', assertSucceeds(setDoc(doc(L, 'location
 await t('history cannot be changed or deleted', assertFails(deleteDoc(doc(L, 'locations/sanford/taskHistory/h1'))));
 await t('employees cannot read or write history', assertFails(getDoc(doc(A, 'locations/sanford/taskHistory/h1'))));
 await t('a listed manager cannot edit another store\'s tasks', assertFails(setDoc(doc(L, 'locations/orlando/config/tasks'), tasks('TjGZ7fcbmAgo4y2skvQPfuH4fJB2'))));
-const photo = (uid, extra = {}) => ({task: 'o-garnish', period: 'days', sheet: '2026-11-03', slot: '', name: 'Ana', uid, at: serverTimestamp(), img: 'data:image/jpeg;base64,AAAA', ...extra});
+const photo = (uid, extra = {}) => ({task: 'o-garnish', period: 'days', sheet: '2026-11-03', day: '2026-11-03', slot: '', name: 'Ana', uid, at: serverTimestamp(), img: 'data:image/jpeg;base64,AAAA', ...extra});
 await t('a phone can save a photo', assertSucceeds(setDoc(doc(A, 'locations/sanford/photos/p1'), photo('uidA'))));
 await t('a check can list its photos', assertSucceeds(setDoc(doc(A, P + 'o-garnish'), check('uidA', 'o-garnish', {photos: ['p1'], slots: ['']}))));
 await t('team phones can view photos', assertSucceeds(getDoc(doc(B, 'locations/sanford/photos/p1'))));
@@ -65,6 +65,22 @@ await t('outsider cannot view photos', assertFails(getDoc(doc(anon, 'locations/s
 await t('cannot save a photo as someone else', assertFails(setDoc(doc(A, 'locations/sanford/photos/p2'), photo('uidB'))));
 await t('photos cannot be replaced or deleted', assertFails(deleteDoc(doc(M, 'locations/sanford/photos/p1'))));
 await t('oversized photo rejected', assertFails(setDoc(doc(A, 'locations/sanford/photos/p3'), photo('uidA', {img: 'x'.repeat(700001)}))));
+// closing lock
+const W = 'locations/sanford/days/2026-10-28/checks/';   // a Wednesday, already past
+const wk = (task, day) => check('uidA', task, {day});
+await t('a check must carry its own day', assertFails(setDoc(doc(A, W + 'o-dust'), wk('o-dust', '2026-11-03'))));
+await t('a check on an open (unlocked) day works', assertSucceeds(setDoc(doc(A, W + 'o-dust'), wk('o-dust', '2026-10-28'))));
+await t('closed Monday: nothing can be checked', assertFails(setDoc(doc(A, 'locations/sanford/days/2026-11-02/checks/o-dust'), wk('o-dust', '2026-11-02'))));
+await t('weekly check: day must be inside that week', assertFails(setDoc(doc(A, 'locations/sanford/weeks/2026-10-26/checks/w-wed-pos'), wk('w-wed-pos', '2026-11-04'))));
+await t('weekly check on a weekday in the week works', assertSucceeds(setDoc(doc(A, 'locations/sanford/weeks/2026-10-26/checks/w-wed-pos'), wk('w-wed-pos', '2026-10-28'))));
+await t('a future day cannot be checked yet', assertFails(setDoc(doc(A, 'locations/sanford/days/2027-01-05/checks/o-dust'), check('uidA', 'o-dust', {day: '2027-01-05'}))));
+await t('a lock record cannot be made before lock time', assertFails(setDoc(doc(A, 'locations/sanford/locks/2027-01-05'), {at: serverTimestamp()})));
+await t('a lock record can be made after lock time', assertSucceeds(setDoc(doc(B, 'locations/sanford/locks/2026-10-28'), {at: serverTimestamp()})));
+await t('a lock record cannot be removed', assertFails(deleteDoc(doc(M, 'locations/sanford/locks/2026-10-28'))));
+await t('locked day: nothing new can be checked', assertFails(setDoc(doc(A, W + 'o-taps'), wk('o-taps', '2026-10-28'))));
+await t('locked day: nothing can be unchecked, even by a manager', assertFails(deleteDoc(doc(L, W + 'o-dust'))));
+await t('locked day: weekly checks made that day are locked too', assertFails(deleteDoc(doc(A, 'locations/sanford/weeks/2026-10-26/checks/w-wed-pos'))));
+await t('locked day: no new photos', assertFails(setDoc(doc(A, 'locations/sanford/photos/p9'), photo('uidA', {day: '2026-10-28', sheet: '2026-10-28'}))));
 await t('nothing else in the database is open', assertFails(setDoc(doc(A, 'anything/x'), {a: 1})));
 await env.clearFirestore();
 await env.cleanup();

@@ -1,7 +1,8 @@
 /* ===== BUILT-IN TASK LISTS =====
    Used until a manager taps Save on the manager page (manage.html). After that, the list saved there is used
    and changes here no longer show on phones; edit tasks on the manager page instead.
-   Each task: ['id','Task','Details (or null)',['Food Code sections']]. Never reuse or change an id. */
+   Each task: ['id','Task','Details (or null)',['Food Code sections']]. Never reuse or change an id
+   (the w-mon-* ids are the old Monday tasks, moved to other days when Mondays closed). */
 const DAILY=[
  {role:'Open · Bar',note:'Openers: full stock and setup. Work top down so you don’t dirty what you just cleaned. Everything done before service.',items:[
   ['o-dust','Walls, ceilings, and lights brushed','Dust and overnight spiders, bar and dining. Knock down any cobwebs you see all day.'],
@@ -50,17 +51,12 @@ const DAILY=[
   ['c-chem','Sanitizer buckets dumped; chemicals stored away from and below food and ice',null,['3-304.14','7-201.11']]]}
 ];
 const WEEKLY=[
- {role:'Monday · Bar exterior detail',day:1,items:[
-  ['w-mon-out','Outside of all bars cleaned and wiped'],
-  ['w-mon-foot','Guest-side foot walls detailed; scuffs, marks, sticky residue removed'],
-  ['w-mon-tables','Bar tables and chairs wiped'],
-  ['w-mon-trim','Lower trim and kick plates cleaned'],
-  ['w-bathfloor','Bathroom floors scrubbed','Deck brush, grout lines, behind toilets']]},
  {role:'Tuesday · Storage & backups',day:2,items:[
   ['w-tue-cab','All storage cabinets wiped out'],
   ['w-tue-cooler','Beer and wine cooler organized, first in first out'],
   ['w-tue-keg','Keg room swept and cleaned'],
-  ['w-tue-backups','Backups restocked','Forks, knives, napkins, straws, to-go supplies']]},
+  ['w-tue-backups','Backups restocked','Forks, knives, napkins, straws, to-go supplies'],
+  ['w-bathfloor','Bathroom floors scrubbed','Deck brush, grout lines, behind toilets']]},
  {role:'Wednesday · Bar equipment',day:3,items:[
   ['w-wed-liquor','Liquor room cleaned and organized','Sweep under shelves, mop the closet'],
   ['w-wed-place','Everything in its designated spot, including event equipment'],
@@ -72,7 +68,8 @@ const WEEKLY=[
  {role:'Thursday · Bar exterior detail',day:4,items:[
   ['w-thu-out','Outside of all bars and foot walls wiped; scuffs and residue removed'],
   ['w-thu-stools','Bar stools and chair legs wiped'],
-  ['w-thu-trim','Trim and ledges cleaned']]},
+  ['w-thu-trim','Trim and ledges cleaned'],
+  ['w-mon-tables','Bar tables and chairs wiped']]},
  {role:'Friday · Storage detail',day:5,items:[
   ['w-fri-deck','Under the dry deck cleaned'],
   ['w-fri-cups','Cup and storage areas cleaned and organized','Including under the mats where cups sit'],
@@ -82,12 +79,15 @@ const WEEKLY=[
  {role:'Saturday · Light maintenance',day:6,items:[
   ['w-sat-service','Service areas and service stations spot-cleaned and wiped'],
   ['w-sat-inv','Inventory check and top-off','Forks, knives, straws, napkins, mixers. Garnish containers clean.'],
-  ['w-sat-cans','Outside of trash cans cleaned']]},
+  ['w-sat-cans','Outside of trash cans cleaned'],
+  ['w-mon-out','Outside of all bars cleaned and wiped'],
+  ['w-mon-trim','Lower trim and kick plates cleaned']]},
  {role:'Sunday · Early close full reset',day:0,items:[
   ['w-sun-mop','Deep mop behind all bars'],
   ['w-sun-drains','Drains cleaned and bleached'],
   ['w-sun-coolers','All coolers wiped out: walls, shelves, gaskets',null,['4-602.13']],
-  ['w-sun-wipe','Full wipe of all surfaces']]}
+  ['w-sun-wipe','Full wipe of all surfaces'],
+  ['w-mon-foot','Guest-side foot walls detailed; scuffs, marks, sticky residue removed']]}
 ];
 /* Photo-required tasks. Tasks in SLOTS need one photo per slot. Everything else is checkbox + initials. */
 const SLOTS={'c-rest':['Men’s restroom','Women’s restroom'],'w-bathfloor':['Men’s restroom','Women’s restroom']};
