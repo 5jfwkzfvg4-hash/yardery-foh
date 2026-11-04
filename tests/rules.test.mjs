@@ -57,6 +57,14 @@ await t('a manager saves a history copy', assertSucceeds(setDoc(doc(L, 'location
 await t('history cannot be changed or deleted', assertFails(deleteDoc(doc(L, 'locations/sanford/taskHistory/h1'))));
 await t('employees cannot read or write history', assertFails(getDoc(doc(A, 'locations/sanford/taskHistory/h1'))));
 await t('a listed manager cannot edit another store\'s tasks', assertFails(setDoc(doc(L, 'locations/orlando/config/tasks'), tasks('TjGZ7fcbmAgo4y2skvQPfuH4fJB2'))));
+const photo = (uid, extra = {}) => ({task: 'o-garnish', period: 'days', sheet: '2026-11-03', slot: '', name: 'Ana', uid, at: serverTimestamp(), img: 'data:image/jpeg;base64,AAAA', ...extra});
+await t('a phone can save a photo', assertSucceeds(setDoc(doc(A, 'locations/sanford/photos/p1'), photo('uidA'))));
+await t('a check can list its photos', assertSucceeds(setDoc(doc(A, P + 'o-garnish'), check('uidA', 'o-garnish', {photos: ['p1'], slots: ['']}))));
+await t('team phones can view photos', assertSucceeds(getDoc(doc(B, 'locations/sanford/photos/p1'))));
+await t('outsider cannot view photos', assertFails(getDoc(doc(anon, 'locations/sanford/photos/p1'))));
+await t('cannot save a photo as someone else', assertFails(setDoc(doc(A, 'locations/sanford/photos/p2'), photo('uidB'))));
+await t('photos cannot be replaced or deleted', assertFails(deleteDoc(doc(M, 'locations/sanford/photos/p1'))));
+await t('oversized photo rejected', assertFails(setDoc(doc(A, 'locations/sanford/photos/p3'), photo('uidA', {img: 'x'.repeat(700001)}))));
 await t('nothing else in the database is open', assertFails(setDoc(doc(A, 'anything/x'), {a: 1})));
 await env.clearFirestore();
 await env.cleanup();

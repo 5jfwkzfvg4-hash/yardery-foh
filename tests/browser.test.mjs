@@ -28,7 +28,8 @@ let n = 0, bad = 0;
 async function t(name, fn) { n++; try { await fn(); console.log('PASS', name); } catch (e) { bad++; console.log('FAIL', name, '-', e.message.split('\n')[0]); } }
 const ok = (c, m) => { if (!c) throw new Error(m); };
 
-const browser = await chromium.launch(process.env.CHROMIUM_PATH ? {executablePath: process.env.CHROMIUM_PATH} : {});
+// A fake camera (moving test pattern) stands in for the phone camera.
+const browser = await chromium.launch({args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(process.env.CHROMIUM_PATH ? {executablePath: process.env.CHROMIUM_PATH} : {})});
 const errors = [];
 async function open(label, opts, url = URL + '?emulator=1') {
   const ctx = await browser.newContext(opts);
@@ -41,16 +42,16 @@ async function open(label, opts, url = URL + '?emulator=1') {
   await page.goto(url);
   return {ctx, page};
 }
-const phone = {viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true};
-const desk = {viewport: {width: 1280, height: 900}};
+const phone = {viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true, permissions: ['camera']};
+const desk = {viewport: {width: 1280, height: 900}, permissions: ['camera']};
 const A = await open('phone', phone), B = await open('desktop', desk);
 const pa = A.page, pb = B.page;
 const pressed = (p, id) => p.getAttribute('#chk-' + id, 'aria-pressed');
 const waitPressed = (p, id, v) => p.waitForFunction(([id, v]) => document.getElementById('chk-' + id)?.getAttribute('aria-pressed') === v, [id, v], {timeout: 5000});
 
 await t('first visit asks for a first name', async () => { ok(await pa.isVisible('#setup'), 'setup hidden'); });
-await pa.fill('#firstName', 'ana'); await pa.click('.go');
-await pb.fill('#firstName', 'Ben'); await pb.click('.go');
+await pa.fill('#firstName', 'ana'); await pa.click('#setupForm .go');
+await pb.fill('#firstName', 'Ben'); await pb.click('#setupForm .go');
 await t('name is remembered and capitalized', async () => { ok((await pa.textContent('#whoName')) === 'Ana', 'name'); });
 await pa.click('#tab-daily');
 await pa.waitForFunction(() => document.querySelectorAll('#dailyLists .box').length > 30);
@@ -96,6 +97,39 @@ await t('name stays after reload, and comes back from Firebase if the phone forg
   await pa.reload(); await pa.waitForTimeout(500); ok(!(await pa.isVisible('#setup')), 'asked again');
   await pa.evaluate(() => localStorage.removeItem('foh-name')); await pa.reload();
   await pa.waitForFunction(() => document.getElementById('setup').hidden && document.getElementById('whoName').textContent === 'Ana', null, {timeout: 6000});
+});
+await t('photo task: camera opens (camera only), Take photo shows a preview with Retake / Use photo', async () => {
+  await pa.click('#tab-daily');
+  ok(await pa.getAttribute('#camFile', 'capture') === 'environment', 'fallback input must open the camera, not the camera roll');
+  await pa.click('#chk-o-garnish'); await pa.waitForSelector('#cam:not([hidden])');
+  await pa.waitForFunction(() => document.getElementById('camVideo').videoWidth > 0 && !document.getElementById('camSnap').disabled, null, {timeout: 6000});
+  ok(await pa.isHidden('#camUse') && await pa.isHidden('#camRetake'), 'use/retake before a photo');
+  await pa.click('#camSnap');
+  ok(await pa.isVisible('#camShot') && await pa.isVisible('#camRetake') && await pa.isVisible('#camUse') && await pa.isHidden('#camVideo'), 'no preview');
+  ok((await pa.getAttribute('#camShot', 'src')).startsWith('data:image/jpeg;base64,'), 'not a jpeg');
+  await pa.screenshot({path: 'tests/shots/phone-photo-preview.png'});
+  await pa.click('#camRetake'); await pa.waitForFunction(() => !document.getElementById('camVideo').hidden && document.getElementById('camVideo').videoWidth > 0, null, {timeout: 6000});
+  ok(await pa.isHidden('#camShot'), 'retake did not go back to the camera');
+  ok(await pressed(pa, 'o-garnish') === 'false', 'checked before Use photo');
+  await pa.click('#camSnap'); await pa.click('#camUse');
+  await pa.waitForSelector('#cam', {state: 'hidden'}); await waitPressed(pa, 'o-garnish', 'true');
+});
+await t('photo task: the other phone sees the check and can view the photo', async () => {
+  await pb.click('#tab-daily'); await waitPressed(pb, 'o-garnish', 'true');
+  await pb.click('#chk-o-garnish + .t .photo-link'); await pb.waitForSelector('#viewImgs img', {timeout: 6000});
+  ok((await pb.getAttribute('#viewImgs img', 'src')).startsWith('data:image/jpeg'), 'no image'); await pb.click('#viewClose');
+});
+await t('photo task with two spots asks for each (Men\u2019s, then Women\u2019s restroom)', async () => {
+  await pa.click('#chk-c-rest'); await pa.waitForFunction(() => !document.getElementById('camSnap').disabled, null, {timeout: 6000});
+  ok((await pa.textContent('#camStep')).includes('Photo 1 of 2'), await pa.textContent('#camStep'));
+  await pa.click('#camSnap'); await pa.click('#camUse');
+  await pa.waitForFunction(() => document.getElementById('camStep').textContent.includes('Photo 2 of 2') && !document.getElementById('camSnap').disabled, null, {timeout: 6000});
+  await pa.click('#camSnap'); await pa.click('#camUse'); await waitPressed(pb, 'c-rest', 'true');
+  ok((await pb.textContent('#chk-c-rest + .t .photo-link')) === 'View photos (2)', 'two photos');
+});
+await t('photo task: Cancel leaves it unchecked', async () => {
+  await pa.click('#chk-c-sinks'); await pa.waitForSelector('#cam:not([hidden])'); await pa.click('#camClose');
+  await pa.waitForSelector('#cam', {state: 'hidden'}); ok(await pressed(pa, 'c-sinks') === 'false', 'checked without a photo');
 });
 await t('a manager can uncheck anyone', async () => {
   const H = {Authorization: 'Bearer owner', 'content-type': 'application/json'};

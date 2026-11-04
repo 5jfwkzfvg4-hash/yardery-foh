@@ -32,9 +32,20 @@ After the first Save, edit tasks only on the manager page; `tasks.js` is then ju
 3. To remove a manager, delete the id from both places and publish the rules again.
    A new phone (or a cleared browser) gets a new device id, so repeat for it.
 
+## Photo tasks
+Tapping the box on a **Photo** task opens the camera inside the page (live view → **Take photo** → preview →
+**Retake** or **Use photo**). Only the camera can be used, never the camera roll. Restroom tasks ask for one photo
+per spot. The task is checked off only after the last **Use photo**; **Cancel** leaves it unchecked. A checked
+photo task shows **View photo** for the whole team.
+- The first time, the phone asks to allow the camera: tap **Allow**. If it was blocked: iPhone Safari → **aA** →
+  **Website Settings** → **Camera** → **Allow**; Android Chrome → lock icon by the address → **Permissions** → **Camera**.
+- Photos are shrunk (about 60–120 KB each) and saved in Firestore `locations/{id}/photos`, because Firebase photo
+  Storage now requires the paid plan. At ~20 photos a day the free 1 GB lasts roughly 1.5–2 years; ask Claude
+  before then about exporting old photos or moving to Storage.
+
 ## Where the records are
 Firestore → `locations/{locationId}/days/{date}/checks/{taskId}` and `.../weeks/{Monday's date}/checks/{taskId}`.
-Each check: task id, first name, device id, server time, tap time. Nothing deletes old days or weeks.
+Each check: task id, first name, device id, server time, tap time (and photo ids for Photo tasks). Nothing deletes old days or weeks.
 An uncheck removes that one check. Only first names are stored: never pay, SSNs, bank details or passwords.
 
 ## What is public, and what protects the data

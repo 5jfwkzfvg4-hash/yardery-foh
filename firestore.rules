@@ -5,6 +5,7 @@ rules_version = '2';
 // - Only people signed in through the site (anonymous sign-in) can read or write. Nobody can list other data.
 // - Anyone can check a task off, only as themselves (their own device id, the real server time).
 // - Only the person who checked a task, or a manager, can uncheck it.
+// - Photo tasks: photos are saved with the check and can't be changed or deleted.
 // - Nobody can edit a check, or delete a day or week; old days and weeks stay as the record.
 // - Only managers can change the task lists (manager page); every save is kept in taskHistory.
 // - Managers: the managerIds() list below (or a locations/{locationId}/managers/{device id} document added in the console).
@@ -24,7 +25,9 @@ service cloud.firestore {
     }
     function validCheck(task) {
       let d = request.resource.data;
-      return d.keys().hasOnly(['task', 'name', 'uid', 'at', 'tappedAt'])
+      return d.keys().hasOnly(['task', 'name', 'uid', 'at', 'tappedAt', 'photos', 'slots'])
+        && (!('photos' in d) || (d.photos is list && d.photos.size() <= 4))
+        && (!('slots' in d) || (d.slots is list && d.slots.size() <= 4))
         && d.keys().hasAll(['task', 'name', 'uid', 'at', 'tappedAt'])
         && d.task == task
         && d.uid == request.auth.uid
@@ -72,7 +75,23 @@ service cloud.firestore {
         allow update, delete: if false;
       }
 
-      // Each phone's first name, tied to its anonymous user id (so it is remembered and managers can find a device).
+      // Photos for Photo-tagged tasks, taken with the camera on the staff page (shrunk JPEG, kept as records).
+      match /photos/{id} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['task', 'period', 'sheet', 'slot', 'name', 'uid', 'at', 'img'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.at == request.time
+          && request.resource.data.task is string && request.resource.data.task.size() <= 40
+          && request.resource.data.period in ['days', 'weeks']
+          && request.resource.data.sheet is string && request.resource.data.sheet.size() == 10
+          && request.resource.data.slot is string && request.resource.data.slot.size() <= 60
+          && request.resource.data.name is string && request.resource.data.name.size() <= 20
+          && request.resource.data.img is string && request.resource.data.img.size() < 700000;
+        allow update, delete: if false;
+      }
+
+            // Each phone's first name, tied to its anonymous user id (so it is remembered and managers can find a device).
       match /devices/{uid} {
         allow read: if signedIn() && (request.auth.uid == uid || isManager(loc));   // managers see names to assign tasks
         allow create, update: if signedIn() && request.auth.uid == uid
