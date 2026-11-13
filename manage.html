@@ -110,9 +110,9 @@ details .more{display:grid;gap:8px;margin-top:8px}
     <p class="hint" id="source"></p>
     <section class="card" id="proposal" hidden style="margin-top:12px;border-color:var(--amber)">
       <h2 style="font-size:18px">Changes ready to add</h2><p class="sub" id="propNote"></p>
-      <ul id="propList" style="margin:10px 0;padding-left:20px"></ul>
+      <ul id="propList" style="margin:10px 0;padding-left:20px;max-height:320px;overflow:auto;font-size:14px"></ul>
       <div class="row"><button type="button" class="btn primary" id="propAdd">Add these</button><button type="button" class="btn" id="propLater">Not now</button></div>
-      <p class="hint">Adding puts them in the editor. Nothing changes for staff until you tap Save.</p>
+      <p class="hint">This puts them in the editor. Nothing changes for staff until you tap Save.</p>
     </section>
     <section id="daily"><h2>Daily</h2><p class="sub">Change wording, move tasks, assign positions. Changes reach every phone when you tap Save.</p><div id="dailyEd"></div>
       <button type="button" class="btn add" id="addSection">+ Add section</button></section>
@@ -310,29 +310,48 @@ tabs.forEach(t=>t.addEventListener('click',()=>show(t.dataset.tab)));
 function gate(msg,showId){$('gateMsg').textContent=msg;$('gateId').hidden=!showId;if(showId)$('uid').textContent=UID}
 $('copyId').addEventListener('click',()=>{const done=()=>toast('Device ID copied.');
   if(navigator.clipboard)navigator.clipboard.writeText(UID).then(done,()=>toast('Press and hold the ID to copy it.'));else toast('Press and hold the ID to copy it.')});
-/* Prepared changes (proposals/tasks.json, written by Claude when Clay asks by chat). Each add is skipped
-   if its task id is already in the list, so it can't be added twice; nothing is saved until Save. */
+/* Prepared changes (proposals/tasks.json, written by Claude when Clay asks by chat). Nothing is saved until Save.
+   add: skipped if the task id is already in the list. edit / group: applied only while the text still matches
+   "from", so anything changed here since is never overwritten. */
 let PROP=null;
-function pendingOps(){
-  if(!PROP||!M)return [];
-  const have=new Set(allGroups().flatMap(x=>x.g.items.map(i=>i.id)));
-  return (PROP.ops||[]).filter(o=>o.op==='add'&&o.item&&o.item.id&&!have.has(o.item.id)&&findGroup(o));
-}
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function findItem(id){for(const x of allGroups()){const it=x.g.items.find(i=>i.id===id);if(it)return it}return null}
 function findGroup(o){const gs=M[o.list]||[];return o.list==='weekly'&&typeof o.day==='number'?gs.find(g=>g.day===o.day):gs.find(g=>g.role===o.group)}
+function isPending(o){
+  if(o.op==='add'){const have=new Set(allGroups().flatMap(x=>x.g.items.map(i=>i.id)));return o.item&&o.item.id&&!have.has(o.item.id)&&!!findGroup(o)}
+  if(o.op==='edit'){const it=findItem(o.id);return !!it&&Object.keys(o.from||{}).every(k=>same(it[k],o.from[k]))&&!Object.keys(o.to||{}).every(k=>same(it[k],o.to[k]))}
+  if(o.op==='group'){const g=(M[o.list]||[]).find(g=>g.role===o.from.role);return !!g&&(o.from.note==null||g.note===o.from.note)}
+  return false;
+}
+function pendingOps(){return PROP&&M?(PROP.ops||[]).filter(isPending):[]}
+function describe(o){
+  if(o.op==='add')return 'Add to '+(o.list==='weekly'?DAYS[findGroup(o).day]:findGroup(o).role)+': '+o.item.t;
+  if(o.op==='group')return 'Section “'+o.from.role+'” → “'+o.to.role+'”'+(o.to.note!=null&&o.to.note!==o.from.note?' · note: '+o.to.note:'');
+  const it=findItem(o.id),parts=[];
+  if('t' in o.to)parts.push('“'+o.from.t+'” → “'+o.to.t+'”');
+  if('d' in o.to)parts.push('details → “'+o.to.d+'”');
+  if('s' in o.to)parts.push('photo spots → '+o.to.s.join(', '));
+  return ('t' in o.to?'':it.t+': ')+parts.join(' · ');
+}
 function showProposal(){
   const ops=pendingOps(),box=$('proposal');
   let skip='';try{skip=sessionStorage.getItem('foh-prop-later')||''}catch(e){}
   if(!ops.length||skip===PROP.id){box.hidden=true;return}
-  $('propNote').textContent=PROP.note||'';
-  $('propList').replaceChildren(...ops.map(o=>el('li',null,(o.list==='weekly'?DAYS[findGroup(o).day]:findGroup(o).role)+': '+o.item.t)));
+  $('propNote').textContent=(PROP.note||'')+' ('+ops.length+' changes)';
+  $('propList').replaceChildren(...ops.map(o=>el('li',null,describe(o))));
+  $('propAdd').textContent=ops.every(o=>o.op==='add')?'Add these':'Apply these';
   box.hidden=false;
 }
 $('propAdd').addEventListener('click',()=>{
   const ops=pendingOps();
-  ops.forEach(o=>{const g=findGroup(o),it=o.item;
-    const item={id:it.id,t:it.t,d:it.d||'',c:it.c||[],p:!!it.p,s:it.s||[],pos:(it.pos||[]).filter(p=>M.positions.includes(p)),who:[]};
-    const at=g.items.findIndex(i=>i.id===o.after);g.items.splice(at<0?g.items.length:at+1,0,item)});
-  render();mark();$('proposal').hidden=true;toast(ops.length+' tasks added. Check them, then tap Save.');
+  ops.forEach(o=>{
+    if(o.op==='add'){const g=findGroup(o),it=o.item;
+      const item={id:it.id,t:it.t,d:it.d||'',c:it.c||[],p:!!it.p,s:it.s||[],pos:(it.pos||[]).filter(p=>M.positions.includes(p)),who:[]};
+      const at=g.items.findIndex(i=>i.id===o.after);g.items.splice(at<0?g.items.length:at+1,0,item)}
+    else if(o.op==='edit'){const it=findItem(o.id);Object.keys(o.to).forEach(k=>{it[k]=Array.isArray(o.to[k])?o.to[k].slice():o.to[k]})}
+    else if(o.op==='group'){const g=M[o.list].find(g=>g.role===o.from.role);g.role=o.to.role;if(o.to.note!=null)g.note=o.to.note}
+  });
+  render();mark();$('proposal').hidden=true;toast(ops.length+' changes made. Check them, then tap Save.');
 });
 $('propLater').addEventListener('click',()=>{try{sessionStorage.setItem('foh-prop-later',PROP.id)}catch(e){}$('proposal').hidden=true});
 fetch('proposals/tasks.json?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(p=>{PROP=p;if(M)showProposal()}).catch(()=>{});

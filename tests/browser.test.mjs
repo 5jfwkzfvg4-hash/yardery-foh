@@ -17,7 +17,7 @@ if (testCfg === cfg || noCfg === cfg) throw new Error('config block not found');
 const server = http.createServer((q, r) => {
   const path = q.url.split('?')[0], file = path.replace(/^\/(noconfig\/)?/, '') || 'index.html';
   if (!/^(index\.html|manage\.html|config\.js|tasks\.js|report\.js|proposals\/tasks\.json)$/.test(file)) { r.writeHead(404); return r.end(); }
-  const body = file === 'config.js' ? (path.startsWith('/noconfig/') ? noCfg : testCfg) : readFileSync(file);
+  const body = file === 'config.js' ? (path.startsWith('/noconfig/') ? noCfg : testCfg) : readFileSync(file === 'proposals/tasks.json' ? 'tests/fixtures/proposal.json' : file);
   r.writeHead(200, {'content-type': file.endsWith('.js') ? 'text/javascript' : file.endsWith('.json') ? 'application/json' : 'text/html; charset=utf-8'}); r.end(body);
 }).listen(0);
 const URL = `http://127.0.0.1:${server.address().port}/`;
@@ -198,7 +198,8 @@ await t('manager page: positions can be added and renamed everywhere', async () 
 await t('manager page: prepared changes are offered, added in place with one tap, and reach staff after Save', async () => {
   await pm.reload(); await pm.waitForSelector('#proposal:not([hidden])', {timeout: 8000});
   const items = await pm.locator('#propList li').allTextContents();
-  ok(items.length === 8 && items.includes('Close · Bar breakdown: Syrup bottles wiped') && items.includes('Sunday: ALL cut fruit and juices in pour bottles thrown out'), items.join(' | '));
+  ok(items.length === 10 && items.includes('Add to Close · Bar breakdown: Syrup bottles wiped') && items.includes('Add to Sunday: ALL cut fruit and juices in pour bottles thrown out'), items.join(' | '));
+  ok(items.includes('“Beer taps on” → “Beer taps turned on”') && !items.some(x => x.includes('Should not apply')) && items.some(x => x.startsWith('Section “Open · Floor”')), 'edits: ' + items.join(' | '));
   await pm.click('#propAdd'); ok(await pm.isHidden('#proposal') && !(await pm.isDisabled('#save')), 'not added');
   ok((await pm.inputValue('#t-c-syrup')) === 'Syrup bottles wiped', 'syrup missing');
   await pm.click('#save');
@@ -206,6 +207,8 @@ await t('manager page: prepared changes are offered, added in place with one tap
   const order = await pa.evaluate(() => [...document.querySelectorAll('#dailyLists .box')].map(b => b.id));
   ok(order.indexOf('chk-c-wellin') === order.indexOf('chk-c-bottles') + 1 && order.indexOf('chk-c-syrup') === order.indexOf('chk-c-wellin') + 1, 'wrong place');
   ok((await pa.textContent('#chk-c-syrup + .t .tags')).includes('PM Bar'), 'no position');
+  ok((await pa.textContent('#chk-o-taps + .t .ttl')) === 'Beer taps turned on', 'edit not live');
+  ok((await pa.textContent('#dailyLists')).includes('Open · Floor & entry'), 'section rename not live');
   await pm.reload(); await pm.waitForSelector('#editor:not([hidden])'); await pm.waitForTimeout(800);
   ok(await pm.isHidden('#proposal'), 'offered again after saving');
 });
