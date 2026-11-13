@@ -1,6 +1,6 @@
 {
- "id": "2026-11-13-guide-additions",
- "note": "Additions from the bar-guide research (items 1, 2, 4, 7, 9, 11 and 13, requested Nov 13).",
+ "id": "2026-11-13-guide-additions-2",
+ "note": "Additions from the bar-guide research (items 1, 2, 4, 7, 9, 11 and 13, requested Nov 13; ice machine updated).",
  "ops": [
   {
    "op": "add",
@@ -144,8 +144,8 @@
    "group": "Monthly · Deep clean",
    "item": {
     "id": "m-icemachine",
-    "t": "Ice machine checked inside for mold or slime",
-    "d": "Tell the MOD if you see any. The full clean and sanitize follows the manufacturer's schedule (usually every 6 months, by the service company)."
+    "t": "Ice machine burned, cleaned, and sanitized inside; air filters cleaned",
+    "d": "Turn the machine off and burn (melt) all the ice in the bin. Clean, then sanitize, the inside of the bin and every surface that touches ice, using the ice-machine cleaner and sanitizer and the steps in the machine's manual. Pull the air filters, rinse off the dust, let them dry, and put them back. Tell the MOD about any mold, slime, or damage. The full machine service still follows the manufacturer's schedule (usually every 6 months)."
    }
   }
  ]
