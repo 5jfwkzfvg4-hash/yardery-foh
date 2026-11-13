@@ -17,7 +17,8 @@ service cloud.firestore {
     // Keep in step with "managers" in the page's FOH_CONFIG. After editing, paste this file into Firebase > Rules > Publish.
     function managerIds() {
       return {
-        'sanford': ['TjGZ7fcbmAgo4y2skvQPfuH4fJB2']   // Clay
+        'sanford': ['TjGZ7fcbmAgo4y2skvQPfuH4fJB2',   // Clay
+                    'VhBcsd2kwkQao2VjpUeafDtEd0A2']   // added Nov 13 at Clay's request
       };
     }
     function isManager(loc) {

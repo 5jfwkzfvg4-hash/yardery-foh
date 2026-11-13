@@ -16,7 +16,8 @@ window.FOH_CONFIG={
     appId:'1:588087483594:web:6d29a5766f420cfce46833'
   },
   managers:[                        // manager device ids (can uncheck anyone). Must match managerIds() in firestore.rules.
-    'TjGZ7fcbmAgo4y2skvQPfuH4fJB2'   // Clay
+    'TjGZ7fcbmAgo4y2skvQPfuH4fJB2',  // Clay
+    'VhBcsd2kwkQao2VjpUeafDtEd0A2'   // added Nov 13 at Clay's request
   ],
   schedule:{                        // closed days and closing times (0=Sunday … 6=Saturday; 24 = midnight).
     closedDays:[1],                 // Monday: no checklists
