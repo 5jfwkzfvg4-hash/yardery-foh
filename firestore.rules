@@ -20,7 +20,7 @@ service cloud.firestore {
         'sanford': ['TjGZ7fcbmAgo4y2skvQPfuH4fJB2',   // Clay
                     'VhBcsd2kwkQao2VjpUeafDtEd0A2',   // added Nov 13 at Clay's request
                     'p4319WV7PBRuX0kDgi98zCDCtB22',   // added Nov 13 at Clay's request (computer)
-                    '1hxYPl0wQnbl1KgvV9nJrCEA6y82']   // added Nov 13 at Clay's request
+                    '1hxYPl0wQnbl1KgvV9nJrCEA6y82']   // ClayA16
       };
     }
     function isManager(loc) {
