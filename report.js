@@ -33,6 +33,7 @@
     var day = local.toISOString().slice(0, 10);
     return local.getUTCHours() < cut ? addDays(day, -1) : day;
   }
+  function monthOf(day) { return day.slice(0, 8) + '01'; }
   function mondayOf(day) { return addDays(day, -((dow(day) + 6) % 7)); }
   /* 'open' | 'countdown' | 'locked' | 'closed' for business day `day` at instant `now` */
   function state(day, now, cfg, offset) {
@@ -58,7 +59,7 @@
           items: g.items.map(function (i) { return {id: i[0], t: i[1], d: i[2] || '', c: i[3] || [], p: has(i[0]), s: SL[i[0]] || [], pos: [], who: []}; })};
       });
     }
-    return {daily: conv(T.DAILY), weekly: conv(T.WEEKLY), positions: []};
+    return {daily: conv(T.DAILY), weekly: conv(T.WEEKLY), monthly: conv(T.MONTHLY), positions: []};
   }
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); }
@@ -82,7 +83,7 @@
         (it.who || []).forEach(function (p) { tags.push('For ' + esc(p)); });
         if (it.p) tags.push(rec && rec.photos && rec.photos.length ? 'Photo' : '<b>Photo required</b>');
         var status = rec
-          ? '<td class="ok">&#10003; Done</td><td>' + esc(rec.name) + '<br><span class="t">' + clock(rec.at, offset) + '</span></td>'
+          ? '<td class="ok">&#10003; Done</td><td>' + esc(rec.name) + '<br><span class="t">' + (rec.day && rec.day !== day ? esc(shortDate(rec.day).slice(4)) + ' ' : '') + clock(rec.at, offset) + '</span></td>'
           : '<td class="no">&#10007; NOT DONE</td><td></td>';
         return '<tr class="' + (rec ? 'd' : 'n') + '">' + status + '<td><b>' + esc(it.t) + '</b>' +
           (it.d ? '<div class="dd">' + esc(it.d) + '</div>' : '') +
@@ -98,7 +99,7 @@
     }
     var dayChecks = data.dayChecks || {}, weekChecks = {};
     Object.keys(data.weekChecks || {}).forEach(function (k) { if ((data.weekChecks[k].day || '') === day) weekChecks[k] = data.weekChecks[k]; });
-    var daily = data.tasks.daily || [], weekly = data.tasks.weekly || [];
+    var daily = data.tasks.daily || [], weekly = data.tasks.weekly || [], monthly = data.tasks.monthly || [], monthChecks = data.monthChecks || {};
     var all = [].concat.apply([], daily.map(function (g) { return g.items; }));
     var dDone = all.filter(function (i) { return dayChecks[i.id]; }).length;
     var wg = weekly.filter(function (g) { return g.day === dw; })[0];
@@ -129,6 +130,8 @@
       '<h2>Daily</h2>' + daily.map(function (g) { return table(g.role, g.items, dayChecks, g.note); }).join('') +
       '<h2>Weekly · ' + DAYS[dw] + '</h2>' + (wg ? table(wg.role, wg.items, weekChecks, wg.note) : '<p>No weekly tasks for ' + DAYS[dw] + '.</p>') +
       (extra.length ? table('Other weekly tasks done today', extra, weekChecks) : '') +
+      (monthly.length ? '<h2>Monthly · ' + MONTHS[parts(day).m - 1] + ' (so far this month)</h2>' +
+        monthly.map(function (g) { return table(g.role, g.items, monthChecks, g.note); }).join('') : '') +
       '<p class="foot">Made automatically when the checklist locked. Times are ' + esc(data.timeZoneLabel || 'Eastern') + '. ' +
       (data.generatedAt ? 'Generated ' + esc(shortDate(businessDay(data.generatedAt, null, offset))) + ' ' + clock(data.generatedAt, offset) + '.' : '') + '</p>' +
       '</body></html>';
@@ -136,7 +139,7 @@
   }
 
   var api = {DEFAULT_SCHEDULE: DEFAULT_SCHEDULE, wallToMs: wallToMs, dow: dow, addDays: addDays, isClosed: isClosed, closeAt: closeAt, lockAt: lockAt,
-    businessDay: businessDay, mondayOf: mondayOf, state: state, longDate: longDate, shortDate: shortDate, clock: clock,
+    businessDay: businessDay, mondayOf: mondayOf, monthOf: monthOf, state: state, longDate: longDate, shortDate: shortDate, clock: clock,
     fromBuiltIn: fromBuiltIn, build: build, DAYS: DAYS};
   root.FOHReport = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

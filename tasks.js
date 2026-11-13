@@ -92,4 +92,5 @@ const WEEKLY=[
 /* Photo-required tasks. Tasks in SLOTS need one photo per slot. Everything else is checkbox + initials. */
 const SLOTS={'c-rest':['Men’s restroom','Women’s restroom'],'w-bathfloor':['Men’s restroom','Women’s restroom']};
 const PHOTO=new Set(['w-bathfloor','o-garnish','o-final','c-garnish','c-icewell','c-sinks','c-soda','c-floor','c-reset','c-fountain','c-italian','c-rest','c-chem','c-dining','w-sun-drains','w-sun-coolers']);
-window.FOH_TASKS={DAILY,WEEKLY,SLOTS,PHOTO};
+const MONTHLY=[];   // monthly list: added on the manager page
+window.FOH_TASKS={DAILY,WEEKLY,MONTHLY,SLOTS,PHOTO};

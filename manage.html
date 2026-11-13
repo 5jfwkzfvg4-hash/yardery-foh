@@ -94,6 +94,7 @@ details .more{display:grid;gap:8px;margin-top:8px}
     <nav role="tablist" id="tabs" hidden>
       <button role="tab" data-tab="daily" aria-selected="true">Daily</button>
       <button role="tab" data-tab="weekly" aria-selected="false">Weekly</button>
+      <button role="tab" data-tab="monthly" aria-selected="false">Monthly</button>
       <button role="tab" data-tab="positions" aria-selected="false">Team</button>
     </nav>
   </div>
@@ -117,6 +118,8 @@ details .more{display:grid;gap:8px;margin-top:8px}
     <section id="daily"><h2>Daily</h2><p class="sub">Change wording, move tasks, assign positions. Changes reach every phone when you tap Save.</p><div id="dailyEd"></div>
       <button type="button" class="btn add" id="addSection">+ Add section</button></section>
     <section id="weekly" hidden><h2>Weekly</h2><p class="sub">One section per day. A task only shows on its day’s list.</p><div id="weeklyEd"></div></section>
+    <section id="monthly" hidden><h2>Monthly</h2><p class="sub">Done any day during the month; the list starts fresh on the 1st.</p><div id="monthlyEd"></div>
+      <button type="button" class="btn add" id="addMonthSection">+ Add section</button></section>
     <section id="positions" hidden><h2>Positions</h2><p class="sub">Tap a position on a task to assign it. Renaming here renames it on every task.</p>
       <ul class="list" id="posList" style="margin-top:14px"></ul>
       <div class="row" style="margin-top:10px"><input type="text" id="newPos" maxlength="30" placeholder="New position, e.g. PM Bartender" style="flex:1;min-width:0"><button type="button" class="btn primary" id="addPos">Add</button></div>
@@ -149,12 +152,12 @@ function fromBuiltIn(){
   const PH=T.PHOTO||new Set(),SL=T.SLOTS||{};
   const conv=gs=>(gs||[]).map(g=>({role:g.role,note:g.note||'',day:typeof g.day==='number'?g.day:null,
     items:g.items.map(([id,t,d,c])=>({id,t,d:d||'',c:c||[],p:PH.has(id),s:SL[id]||[],pos:[],who:[]}))}));
-  return {daily:conv(T.DAILY),weekly:conv(T.WEEKLY),positions:['AM Bar','PM Bar','AM Server','PM Server','Food Runner']};
+  return {daily:conv(T.DAILY),weekly:conv(T.WEEKLY),monthly:conv(T.MONTHLY),positions:['AM Bar','PM Bar','AM Server','PM Server','Food Runner']};
 }
 function clean(x){
   const g=gs=>(gs||[]).map(g=>({role:String(g.role||''),note:String(g.note||''),day:typeof g.day==='number'?g.day:null,
     items:(g.items||[]).map(i=>({id:String(i.id),t:String(i.t||''),d:String(i.d||''),c:(i.c||[]).map(String),p:!!i.p,s:(i.s||[]).map(String),pos:(i.pos||[]).map(String),who:(i.who||[]).map(String)}))}));
-  return {daily:g(x.daily),weekly:g(x.weekly),positions:(x.positions||[]).map(String)};
+  return {daily:g(x.daily),weekly:g(x.weekly),monthly:g(x.monthly),positions:(x.positions||[]).map(String)};
 }
 let PEOPLE=[], M=null, saved='', fb=null, UID='', NAME='', remote=null, fromSaved=false;
 try{NAME=localStorage.getItem('foh-name')||''}catch(e){}
@@ -166,8 +169,8 @@ function mark(){
 }
 window.addEventListener('beforeunload',e=>{if(dirty()){e.preventDefault();e.returnValue=''}});
 const newId=()=>'t-'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-const allGroups=()=>[...M.daily.map((g,i)=>({list:'daily',i,g})),...M.weekly.map((g,i)=>({list:'weekly',i,g}))];
-const groupName=(list,g)=>(list==='daily'?'Daily › ':'Weekly › ')+(g.role||'(untitled)');
+const allGroups=()=>[...M.daily.map((g,i)=>({list:'daily',i,g})),...M.weekly.map((g,i)=>({list:'weekly',i,g})),...M.monthly.map((g,i)=>({list:'monthly',i,g}))];
+const groupName=(list,g)=>({daily:'Daily › ',weekly:'Weekly › ',monthly:'Monthly › '}[list])+(g.role||'(untitled)');
 
 /* two-tap confirm for removals */
 function armed(btn,label,fn){btn.addEventListener('click',()=>{
@@ -184,11 +187,11 @@ function renderList(list){
     const title=el('input');title.type='text';title.value=g.role;title.maxLength=80;title.setAttribute('aria-label','Section name');
     title.addEventListener('input',()=>{g.role=title.value;mark()});
     head.appendChild(title);
-    if(list==='daily'){
-      head.append(iconBtn('↑','Move section up',()=>{M.daily.splice(gi-1,0,M.daily.splice(gi,1)[0]);rerender()},gi===0),
-                  iconBtn('↓','Move section down',()=>{M.daily.splice(gi+1,0,M.daily.splice(gi,1)[0]);rerender()},gi===M.daily.length-1));
+    if(list!=='weekly'){const L=M[list];
+      head.append(iconBtn('↑','Move section up',()=>{L.splice(gi-1,0,L.splice(gi,1)[0]);rerender()},gi===0),
+                  iconBtn('↓','Move section down',()=>{L.splice(gi+1,0,L.splice(gi,1)[0]);rerender()},gi===L.length-1));
       const del=el('button','btn danger','Remove');del.type='button';
-      armed(del,g.items.length?'Tap again: removes '+g.items.length+' tasks':'Tap again to remove',()=>{M.daily.splice(gi,1);rerender();toast('Section removed. Tap Save to publish.')});
+      armed(del,g.items.length?'Tap again: removes '+g.items.length+' tasks':'Tap again to remove',()=>{L.splice(gi,1);rerender();toast('Section removed. Tap Save to publish.')});
       head.appendChild(del);
     }
     box.appendChild(head);
@@ -271,9 +274,10 @@ function renderPeople(){
     const n=allGroups().reduce((s,g)=>s+g.g.items.filter(i=>i.who.includes(x.name)).length,0);
     li.appendChild(el('span','hint',n+' tasks'+(x.seen?' · last seen '+day.format(x.seen):'')));ul.appendChild(li)});
 }
-function render(){renderPeople();renderList('daily');renderList('weekly');renderPositions();requestAnimationFrame(growAll)}
-$('addSection').addEventListener('click',()=>{M.daily.push({role:'New section',note:'',day:null,items:[]});render();mark();
-  const ins=$('dailyEd').querySelectorAll('.ghead input');const last=ins[ins.length-1];last.focus();last.select()});
+function render(){renderPeople();renderList('daily');renderList('weekly');renderList('monthly');renderPositions();requestAnimationFrame(growAll)}
+[['addSection','daily'],['addMonthSection','monthly']].forEach(([b,list])=>$(b).addEventListener('click',()=>{
+  M[list].push({role:list==='monthly'?'Monthly · New section':'New section',note:'',day:null,items:[]});render();mark();
+  const ins=$(list+'Ed').querySelectorAll('.ghead input');const last=ins[ins.length-1];last.focus();last.select()}));
 $('addPos').addEventListener('click',()=>{const n=$('newPos').value.trim();
   if(!n){toast('Type a position name first.');return}
   if(M.positions.some(x=>x.toLowerCase()===n.toLowerCase())){toast('That position already exists.');return}
@@ -292,6 +296,7 @@ $('save').addEventListener('click',()=>{
   if(!fb||!UID){toast('Not connected yet. Check your signal and try again.');return}
   const data=clean(M);
   data.daily.forEach(g=>{g.role=g.role.trim();g.note=g.note.trim();g.items.forEach(i=>{i.t=i.t.trim();i.d=i.d.trim()})});
+  data.monthly.forEach(g=>{g.role=g.role.trim();g.note=g.note.trim();g.items.forEach(i=>{i.t=i.t.trim();i.d=i.d.trim()})});
   data.weekly.forEach(g=>{g.role=g.role.trim();g.note=g.note.trim();g.items.forEach(i=>{i.t=i.t.trim();i.d=i.d.trim()})});
   const rec=Object.assign({},data,{updatedAt:fb.serverTimestamp(),updatedBy:NAME||'Manager',updatedByUid:UID});
   const b=fb.writeBatch(fb.db);
@@ -304,7 +309,7 @@ $('save').addEventListener('click',()=>{
 });
 
 const tabs=[...document.querySelectorAll('#tabs button')];
-function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));['daily','weekly','positions'].forEach(s=>{$(s).hidden=s!==id});$('peopleBox').hidden=id!=='positions';window.scrollTo(0,0);requestAnimationFrame(growAll)}
+function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));['daily','weekly','monthly','positions'].forEach(s=>{$(s).hidden=s!==id});$('peopleBox').hidden=id!=='positions';window.scrollTo(0,0);requestAnimationFrame(growAll)}
 tabs.forEach(t=>t.addEventListener('click',()=>show(t.dataset.tab)));
 
 function gate(msg,showId){$('gateMsg').textContent=msg;$('gateId').hidden=!showId;if(showId)$('uid').textContent=UID}
@@ -318,14 +323,17 @@ const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 function findItem(id){for(const x of allGroups()){const it=x.g.items.find(i=>i.id===id);if(it)return it}return null}
 function findGroup(o){const gs=M[o.list]||[];return o.list==='weekly'&&typeof o.day==='number'?gs.find(g=>g.day===o.day):gs.find(g=>g.role===o.group)}
 function isPending(o){
-  if(o.op==='add'){const have=new Set(allGroups().flatMap(x=>x.g.items.map(i=>i.id)));return o.item&&o.item.id&&!have.has(o.item.id)&&!!findGroup(o)}
+  if(o.op==='addgroup')return !(M[o.list]||[]).some(g=>g.role===o.role);
+  if(o.op==='add'){const have=new Set(allGroups().flatMap(x=>x.g.items.map(i=>i.id)));
+    return o.item&&o.item.id&&!have.has(o.item.id)&&(!!findGroup(o)||(PROP.ops||[]).some(a=>a.op==='addgroup'&&a.list===o.list&&a.role===o.group&&isPending(a)))}
   if(o.op==='edit'){const it=findItem(o.id);return !!it&&Object.keys(o.from||{}).every(k=>same(it[k],o.from[k]))&&!Object.keys(o.to||{}).every(k=>same(it[k],o.to[k]))}
   if(o.op==='group'){const g=(M[o.list]||[]).find(g=>g.role===o.from.role);return !!g&&(o.from.note==null||g.note===o.from.note)}
   return false;
 }
 function pendingOps(){return PROP&&M?(PROP.ops||[]).filter(isPending):[]}
 function describe(o){
-  if(o.op==='add')return 'Add to '+(o.list==='weekly'?DAYS[findGroup(o).day]:findGroup(o).role)+': '+o.item.t;
+  if(o.op==='addgroup')return 'New '+o.list+' section: '+o.role;
+  if(o.op==='add')return 'Add to '+(o.list==='weekly'?DAYS[o.day]:o.group)+': '+o.item.t;
   if(o.op==='group')return 'Section “'+o.from.role+'” → “'+o.to.role+'”'+(o.to.note!=null&&o.to.note!==o.from.note?' · note: '+o.to.note:'');
   const it=findItem(o.id),parts=[];
   if('t' in o.to)parts.push('“'+o.from.t+'” → “'+o.to.t+'”');
@@ -344,8 +352,9 @@ function showProposal(){
 }
 $('propAdd').addEventListener('click',()=>{
   const ops=pendingOps();
-  ops.forEach(o=>{
-    if(o.op==='add'){const g=findGroup(o),it=o.item;
+  ops.sort((a,b)=>(b.op==='addgroup')-(a.op==='addgroup')).forEach(o=>{
+    if(o.op==='addgroup'){M[o.list].push({role:o.role,note:o.note||'',day:null,items:[]})}
+    else if(o.op==='add'){const g=findGroup(o),it=o.item;
       const item={id:it.id,t:it.t,d:it.d||'',c:it.c||[],p:!!it.p,s:it.s||[],pos:(it.pos||[]).filter(p=>M.positions.includes(p)),who:[]};
       const at=g.items.findIndex(i=>i.id===o.after);g.items.splice(at<0?g.items.length:at+1,0,item)}
     else if(o.op==='edit'){const it=findItem(o.id);Object.keys(o.to).forEach(k=>{it[k]=Array.isArray(o.to[k])?o.to[k].slice():o.to[k]})}

@@ -12,6 +12,8 @@ through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff 
   reordered and removed; Weekly has one section per day. **Photo & Food Code** holds the Photo tag and code links.
 - **Assign to a person:** on any task, open **Assign to a person** and tap a name. Names come from the phones
   that have opened FOH (first names they typed). Staff see a "For Ana" tag on that task.
+- **Monthly tab:** monthly sections and tasks; staff check them off any day during the month, and they start fresh on the 1st.
+  Staff see a Monthly tab and Home box once there is a monthly list.
 - **Team tab:** add, rename (renames it on every task) or remove positions (AM Bar, PM Bar, AM Server, PM Server,
   Food Runner), and see everyone whose phone has opened FOH, with how many tasks each person has.
 - Nothing changes for staff until you tap **Save**; then every phone shows the new list within seconds.
@@ -51,7 +53,7 @@ photo task shows **View photo** for the whole team.
   saves a PDF of done / not done with photos to Drive "11 FOH Cleaning Checklists" and adds it to the recap draft.
 
 ## Where the records are
-Firestore → `locations/{locationId}/days/{date}/checks/{taskId}` and `.../weeks/{Monday's date}/checks/{taskId}`.
+Firestore → `locations/{locationId}/days/{date}/checks/{taskId}`, `.../weeks/{Monday's date}/checks/{taskId}` and `.../months/{YYYY-MM-01}/checks/{taskId}`.
 Each check: task id, first name, device id, server time, tap time (and photo ids for Photo tasks). Nothing deletes old days or weeks.
 An uncheck removes that one check. Only first names are stored: never pay, SSNs, bank details or passwords.
 

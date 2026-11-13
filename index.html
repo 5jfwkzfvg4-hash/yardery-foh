@@ -131,6 +131,7 @@ a.tag{color:var(--pine);border-color:currentColor}
       <button role="tab" id="tab-home" data-tab="home" aria-selected="true">Home</button>
       <button role="tab" id="tab-daily" data-tab="daily" aria-selected="false">Daily</button>
       <button role="tab" id="tab-weekly" data-tab="weekly" aria-selected="false">Weekly</button>
+      <button role="tab" id="tab-monthly" data-tab="monthly" aria-selected="false" hidden>Monthly</button>
     </nav>
   </div>
 </header>
@@ -152,6 +153,10 @@ a.tag{color:var(--pine);border-color:currentColor}
       <button type="button" class="sum" id="sumWeekly" data-go="weekly">
         <span class="lbl" id="sumWeekLbl">Weekly</span>
         <span class="pct" id="sumWeekPct">0%</span>
+      </button>
+      <button type="button" class="sum" id="sumMonthly" data-go="monthly" hidden>
+        <span class="lbl" id="sumMonthLbl">Monthly</span>
+        <span class="pct" id="sumMonthPct">0%</span>
       </button>
     </div>
     <p class="mgr-home"><a class="linkbtn mgr" href="manage.html" hidden>Manager page: edit and assign tasks</a></p>
@@ -176,7 +181,16 @@ a.tag{color:var(--pine);border-color:currentColor}
     <button type="button" class="reset" id="weekReset">Clear this week’s checks</button>
   </section>
 
-  <p class="foot">This phone remembers your first name. Checks are shared live with the whole team and reset each day (Daily) or each Monday (Weekly). Tasks marked Photo need a photo taken before you check them off. Food Code tags open Florida’s adopted Food Code.</p>
+  <section id="monthly" hidden>
+    <h2>Monthly</h2>
+    <p class="sub" id="monthDate"></p>
+    <div class="progress"><div class="bar"><i id="monthBar"></i></div><span class="count" id="monthCount"></span></div>
+    <div class="closedmsg" id="monthClosed" hidden></div>
+    <div id="monthlyLists"></div>
+    <button type="button" class="reset" id="monthReset">Clear this month’s checks</button>
+  </section>
+
+  <p class="foot">This phone remembers your first name. Checks are shared live with the whole team and reset each day (Daily), each Monday (Weekly) or on the 1st (Monthly). Tasks marked Photo need a photo taken before you check them off. Food Code tags open Florida’s adopted Food Code.</p>
 </main>
 <div class="toast" id="toast" role="status"></div>
 <div class="cam" id="cam" role="dialog" aria-modal="true" aria-labelledby="camTitle" hidden>
@@ -213,7 +227,7 @@ const TZ=C.timeZone||'America/New_York', LOC=C.locationId||'';
 const CODE_URL='https://www2.myfloridalicense.com/hr/statutes/documents/2017-FDA-Food-Code-Adopted.pdf'; // Florida DBPR's adopted 2017 FDA Food Code (61C-1.001, F.A.C.)
 const LATE_CLOSE_HOUR=Number.isInteger(C.dayCutoffHour)?C.dayCutoffHour:5; // before this hour, the daily sheet still counts as yesterday's close
 const T=window.FOH_TASKS||{};
-let DAILY=T.DAILY||[], WEEKLY=T.WEEKLY||[], SLOTS=T.SLOTS||{}, PHOTO=T.PHOTO||new Set(), POS={}, WHO={}; // replaced by the manager's saved list when there is one
+let DAILY=T.DAILY||[], WEEKLY=T.WEEKLY||[], MONTHLY=T.MONTHLY||[], SLOTS=T.SLOTS||{}, PHOTO=T.PHOTO||new Set(), POS={}, WHO={}; // replaced by the manager's saved list when there is one
 
 /* ====================================== */
 const $=id=>document.getElementById(id);
@@ -235,11 +249,12 @@ function canEdit(){const st=dayState();
   if(st==='closed'){toast('We’re closed today. No checklist on '+R.DAYS[DOW]+'s.');return false}
   if(st==='locked'){toast('Tonight’s checklist is locked. A new one starts at '+(LATE_CLOSE_HOUR%12||12)+' AM.');return false}
   return true}
-let shift,mon,DAY='',WEEK='',DOW=0;
+let shift,mon,DAY='',WEEK='',MONTH='',DOW=0;
 function setDates(){
   const s=shiftNow(),d=key(s);if(d===DAY)return false;
-  shift=s;DAY=d;DOW=s.getUTCDay();mon=new Date(s);mon.setUTCDate(s.getUTCDate()-((DOW+6)%7));WEEK=key(mon);
+  shift=s;DAY=d;DOW=s.getUTCDay();mon=new Date(s);mon.setUTCDate(s.getUTCDate()-((DOW+6)%7));WEEK=key(mon);MONTH=DAY.slice(0,8)+'01';
   $('dayDate').textContent=shift.toLocaleDateString(undefined,{timeZone:'UTC',weekday:'long',month:'long',day:'numeric'})+' · tap the box to check a task off';
+  $('monthDate').textContent=shift.toLocaleDateString(undefined,{timeZone:'UTC',month:'long',year:'numeric'})+' · any day this month · starts fresh on the 1st';
   $('weekDate').textContent='Week of '+mon.toLocaleDateString(undefined,{timeZone:'UTC',month:'long',day:'numeric'})+' · starts fresh each Monday';
   return true;
 }
@@ -264,10 +279,11 @@ function codeLink(sec){const a=el('a','tag','Food Code '+sec);a.href=CODE_URL+'#
 /* Shared checks: Firestore locations/{locationId}/days/{YYYY-MM-DD}/checks/{taskId} and .../weeks/{Monday}/checks/{taskId}.
    Old days and weeks stay in the database as the record. */
 let fb=null,UID='',isManager=false,fbMsg='Connecting to the team list… try again in a moment.';
-const live={day:{},week:{}},unsub={};
+const live={day:{},week:{},month:{}},unsub={};
 const scopes={
   day:{groups:()=>DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',reset:'dayReset',path:()=>['days',DAY]},
-  week:{groups:()=>WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]}
+  week:{groups:()=>WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]},
+  month:{groups:()=>MONTHLY,mount:'monthlyLists',bar:'monthBar',count:'monthCount',reset:'monthReset',path:()=>['months',MONTH]}
 };
 const checksCol=sc=>fb.collection(fb.db,'locations',LOC,...scopes[sc].path(),'checks');
 function saveErr(e){toast(e&&e.code==='permission-denied'?'That didn’t save. Someone may have just changed it.':'Couldn’t save: '+((e&&e.code)||e))}
@@ -336,6 +352,11 @@ function renderHome(){
   if(closed)$('sumWeekPct').textContent='Closed';
   else if(g){const n=g.items.filter(([id])=>wd[id]).length;$('sumWeekPct').textContent=Math.round(n/g.items.length*100)+'%'}
   else $('sumWeekPct').textContent='—';
+  /* Monthly: tab and Home box only when there is a monthly list */
+  const mItems=MONTHLY.flatMap(g=>g.items),hasM=mItems.length>0;
+  $('tab-monthly').hidden=$('sumMonthly').hidden=!hasM;
+  if(hasM){$('sumMonthLbl').textContent='Monthly · '+shift.toLocaleDateString(undefined,{timeZone:'UTC',month:'long'});
+    $('sumMonthPct').textContent=closed?'Closed':Math.round(mItems.filter(([id])=>live.month[id]).length/mItems.length*100)+'%'}
 }
 Object.keys(scopes).forEach(sc=>{
   build(sc);
@@ -440,8 +461,8 @@ function applyTasks(x){
   if(!x||!Array.isArray(x.daily)||!Array.isArray(x.weekly))return;
   const conv=gs=>gs.map(g=>({role:g.role,note:g.note||undefined,day:typeof g.day==='number'?g.day:undefined,items:(g.items||[]).map(i=>[i.id,i.t,i.d||null,i.c&&i.c.length?i.c:undefined])}));
   const sl={},ph=new Set(),po={},wh={};
-  [...x.daily,...x.weekly].forEach(g=>(g.items||[]).forEach(i=>{if(i.p)ph.add(i.id);if(i.s&&i.s.length)sl[i.id]=i.s;if(i.pos&&i.pos.length)po[i.id]=i.pos;if(i.who&&i.who.length)wh[i.id]=i.who}));
-  DAILY=conv(x.daily);WEEKLY=conv(x.weekly);SLOTS=sl;PHOTO=ph;POS=po;WHO=wh;build('day');build('week');
+  [...x.daily,...x.weekly,...(x.monthly||[])].forEach(g=>(g.items||[]).forEach(i=>{if(i.p)ph.add(i.id);if(i.s&&i.s.length)sl[i.id]=i.s;if(i.pos&&i.pos.length)po[i.id]=i.pos;if(i.who&&i.who.length)wh[i.id]=i.who}));
+  DAILY=conv(x.daily);WEEKLY=conv(x.weekly);MONTHLY=conv(x.monthly||[]);SLOTS=sl;PHOTO=ph;POS=po;WHO=wh;build('day');build('week');build('month');
 }
 /* managers get a link to the manager page; staff never see it */
 function showMgr(){document.querySelectorAll('.mgr').forEach(a=>{a.hidden=!isManager})}
@@ -469,7 +490,7 @@ async function connect(){
       if(!user){signIn();return}
       if(UID===user.uid)return;
       UID=user.uid;fbMsg='Connecting to the team list… try again in a moment.';
-      listen('day');listen('week');listenLock();
+      listen('day');listen('week');listen('month');listenLock();
       fb.onSnapshot(fb.doc(db,'locations',LOC,'config','tasks'),s=>{if(s.exists())applyTasks(s.data())},()=>{});
       const listed=Array.isArray(C.managers)&&C.managers.includes(UID);isManager=listed;
       showMgr();
@@ -492,9 +513,9 @@ function tick(){
   document.querySelector('main').classList.toggle('shut',st==='locked'||st==='closed');
   if(st!==lastState){
     const closed=st==='closed';
-    ['dailyLists','weeklyLists','dayReset','weekReset','dayBar','weekBar'].forEach(i=>{const e=$(i);(i.endsWith('Bar')?e.parentNode.parentNode:e).hidden=closed});
-    $('dayClosed').hidden=$('weekClosed').hidden=!closed;
-    $('dayClosed').textContent=$('weekClosed').textContent='We’re closed '+R.DAYS[DOW]+'s, so there’s no checklist today.';
+    ['dailyLists','weeklyLists','monthlyLists','dayReset','weekReset','monthReset','dayBar','weekBar','monthBar'].forEach(i=>{const e=$(i);(i.endsWith('Bar')?e.parentNode.parentNode:e).hidden=closed});
+    $('dayClosed').hidden=$('weekClosed').hidden=$('monthClosed').hidden=!closed;
+    $('dayClosed').textContent=$('weekClosed').textContent=$('monthClosed').textContent='We’re closed '+R.DAYS[DOW]+'s, so there’s no checklist today.';
     if(lastState){renderHome()}lastState=st;
     if(st==='locked'&&!document.getElementById('cam').hidden){$('camClose').click()}
   }
@@ -508,7 +529,7 @@ function listenLock(){if(unLock)unLock();lockDoc=false;
 setInterval(tick,1000);
 
 /* New day at the cutoff hour, new week on Monday: switch sheets without a reload */
-function rollover(){if(setDates()){lockDoc=false;lastState='';if(fb&&UID){listen('day');listen('week');listenLock()}else{build('day');build('week')}tick()}}
+function rollover(){if(setDates()){lockDoc=false;lastState='';if(fb&&UID){listen('day');listen('week');listen('month');listenLock()}else{build('day');build('week');build('month')}tick()}}
 setInterval(rollover,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)rollover()});
 
 function net(){$('offline').hidden=navigator.onLine}
@@ -517,7 +538,7 @@ window.addEventListener('online',net);window.addEventListener('offline',net);net
 const tabs=[...document.querySelectorAll('nav button')];
 function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));document.querySelectorAll('main section').forEach(s=>{s.hidden=s.id!==id});document.querySelector('.top').hidden=id==='home';window.scrollTo(0,0)}
 tabs.forEach(t=>t.addEventListener('click',()=>{show(t.dataset.tab);try{history.replaceState(null,'','#'+t.dataset.tab)}catch(e){}}));
-function route(){const h=(location.hash||'').slice(1);if(h==='home'||h==='daily'||h==='weekly')show(h)}
+function route(){const h=(location.hash||'').slice(1);if(h==='home'||h==='daily'||h==='weekly'||h==='monthly')show(h)}
 document.querySelectorAll('.sum').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);try{history.replaceState(null,'','#'+b.dataset.go)}catch(e){}}));
 route();window.addEventListener('hashchange',route);
 tick();connect();

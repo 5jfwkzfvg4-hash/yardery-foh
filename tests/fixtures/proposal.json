@@ -137,6 +137,21 @@
     "role": "Open · Floor & entry",
     "note": "Openers."
    }
+  },
+  {
+   "op": "addgroup",
+   "list": "monthly",
+   "role": "Monthly · Deep clean",
+   "note": "Any day this month."
+  },
+  {
+   "op": "add",
+   "list": "monthly",
+   "group": "Monthly · Deep clean",
+   "item": {
+    "id": "m-walls",
+    "t": "Walls behind and under the bar wiped"
+   }
   }
  ]
 }

@@ -68,11 +68,12 @@ function makePdf_(S, day, off, opt) {
     var base = 'projects/' + C.firebase.projectId + '/databases/(default)/documents/locations/' + C.locationId + '/';
     if (!opt.test) lockDay_(auth, base, day);
     var saved = fsGet_(auth, base + 'config/tasks');
-    var tasks = saved ? {daily: saved.daily || [], weekly: saved.weekly || []} : R.fromBuiltIn(S.tasks);
+    var tasks = saved ? {daily: saved.daily || [], weekly: saved.weekly || [], monthly: saved.monthly || []} : R.fromBuiltIn(S.tasks);
     var dayChecks = checks_(fsList_(auth, base + 'days/' + day + '/checks'));
     var weekChecks = checks_(fsList_(auth, base + 'weeks/' + R.mondayOf(day) + '/checks'));
+    var monthChecks = checks_(fsList_(auth, base + 'months/' + R.monthOf(day) + '/checks'));
     var photos = {};
-    [dayChecks, weekChecks].forEach(function (set) {
+    [dayChecks, weekChecks, monthChecks].forEach(function (set) {
       Object.keys(set).forEach(function (k) {
         if (set === weekChecks && set[k].day !== day) return;
         (set[k].photos || []).forEach(function (pid) {
@@ -82,7 +83,7 @@ function makePdf_(S, day, off, opt) {
       });
     });
     var html = R.build({day: day, location: C.locationName || 'The Yardery', tasks: tasks, dayChecks: dayChecks,
-      weekChecks: weekChecks, photos: photos, lockedAt: opt.lockAt, generatedAt: now_()}, off);
+      weekChecks: weekChecks, monthChecks: monthChecks, photos: photos, lockedAt: opt.lockAt, generatedAt: now_()}, off);
     var name = 'FOH Cleaning Checklist — ' + R.shortDate(day) + (opt.test ? ' (test)' : '') + '.pdf';
     var pdf = Utilities.newBlob(html, 'text/html', 'checklist.html').getAs('application/pdf').setName(name);
     return DriveApp.getFolderById(FOLDER_ID).createFile(pdf);

@@ -78,6 +78,9 @@ t('the PDF shows done and not-done tasks, who and when, and the photos', () => {
   ok((html.match(/<img src="data:image\/jpeg/g) || []).length >= 3, 'photos');
   ok(html.includes('Men’s restroom') || html.includes('Men&#x27;s') || html.includes('Men'), 'photo spot labels');
 });
+t('the PDF includes the monthly list with what was done this month', () => {
+  ok(html.includes('Monthly · ') && html.includes('Walls behind and under the bar wiped'), 'no monthly section');
+});
 t('the recap draft gets the line and the PDF at the end (kept: subject, recap text)', () => {
   const d = drafts[0]; ok(d.updated === 1, 'not updated');
   ok(d.body.startsWith('The Numbers') && d.body.trim().endsWith(LINE), d.body);

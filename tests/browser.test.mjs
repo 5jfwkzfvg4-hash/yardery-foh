@@ -198,7 +198,7 @@ await t('manager page: positions can be added and renamed everywhere', async () 
 await t('manager page: prepared changes are offered, added in place with one tap, and reach staff after Save', async () => {
   await pm.reload(); await pm.waitForSelector('#proposal:not([hidden])', {timeout: 8000});
   const items = await pm.locator('#propList li').allTextContents();
-  ok(items.length === 10 && items.includes('Add to Close · Bar breakdown: Syrup bottles wiped') && items.includes('Add to Sunday: ALL cut fruit and juices in pour bottles thrown out'), items.join(' | '));
+  ok(items.length === 12 && items.includes('New monthly section: Monthly · Deep clean') && items.includes('Add to Close · Bar breakdown: Syrup bottles wiped') && items.includes('Add to Sunday: ALL cut fruit and juices in pour bottles thrown out'), items.join(' | '));
   ok(items.includes('“Beer taps on” → “Beer taps turned on”') && !items.some(x => x.includes('Should not apply')) && items.some(x => x.startsWith('Section “Open · Floor”')), 'edits: ' + items.join(' | '));
   await pm.click('#propAdd'); ok(await pm.isHidden('#proposal') && !(await pm.isDisabled('#save')), 'not added');
   ok((await pm.inputValue('#t-c-syrup')) === 'Syrup bottles wiped', 'syrup missing');
@@ -209,6 +209,9 @@ await t('manager page: prepared changes are offered, added in place with one tap
   ok((await pa.textContent('#chk-c-syrup + .t .tags')).includes('PM Bar'), 'no position');
   ok((await pa.textContent('#chk-o-taps + .t .ttl')) === 'Beer taps turned on', 'edit not live');
   ok((await pa.textContent('#dailyLists')).includes('Open · Floor & entry'), 'section rename not live');
+  await pa.waitForSelector('#tab-monthly:not([hidden])', {timeout: 6000}); await pa.click('#tab-monthly');
+  await pa.click('#chk-m-walls'); await waitPressed(pa, 'm-walls', 'true');
+  await pb.click('#tab-home'); await pb.waitForFunction(() => document.getElementById('sumMonthPct').textContent === '100%', null, {timeout: 6000});
   await pm.reload(); await pm.waitForSelector('#editor:not([hidden])'); await pm.waitForTimeout(800);
   ok(await pm.isHidden('#proposal'), 'offered again after saving');
 });

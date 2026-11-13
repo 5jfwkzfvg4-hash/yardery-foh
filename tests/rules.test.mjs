@@ -65,6 +65,9 @@ await t('outsider cannot view photos', assertFails(getDoc(doc(anon, 'locations/s
 await t('cannot save a photo as someone else', assertFails(setDoc(doc(A, 'locations/sanford/photos/p2'), photo('uidB'))));
 await t('photos cannot be replaced or deleted', assertFails(deleteDoc(doc(M, 'locations/sanford/photos/p1'))));
 await t('oversized photo rejected', assertFails(setDoc(doc(A, 'locations/sanford/photos/p3'), photo('uidA', {img: 'x'.repeat(700001)}))));
+await t('monthly check on a day in that month works', assertSucceeds(setDoc(doc(A, 'locations/sanford/months/2026-11-01/checks/m-walls'), check('uidA', 'm-walls'))));
+await t('monthly check must be for a day in that month', assertFails(setDoc(doc(A, 'locations/sanford/months/2026-10-01/checks/m-tops'), check('uidA', 'm-tops'))));
+await t('a manager can save a monthly list', assertSucceeds(setDoc(doc(L, 'locations/sanford/config/tasks'), tasks('TjGZ7fcbmAgo4y2skvQPfuH4fJB2', {monthly: [{role: 'Monthly', note: '', day: null, items: []}]}))));
 // closing lock
 const W = 'locations/sanford/days/2026-10-28/checks/';   // a Wednesday, already past
 const wk = (task, day) => check('uidA', task, {day});

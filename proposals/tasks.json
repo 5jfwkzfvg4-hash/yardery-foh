@@ -1,445 +1,151 @@
 {
- "id": "2026-11-13-wording",
- "note": "Spelling, grammar, capitalization and punctuation fixes (requested Nov 13). Wording and meaning are unchanged otherwise.",
+ "id": "2026-11-13-guide-additions",
+ "note": "Additions from the bar-guide research (items 1, 2, 4, 7, 9, 11 and 13, requested Nov 13).",
  "ops": [
   {
-   "op": "group",
+   "op": "add",
    "list": "daily",
-   "from": {
-    "role": "AM CHECKLIST",
-    "note": "TO BE COMPLETED BY THOSE SCHEDULED FROM OPEN-4PM"
-   },
-   "to": {
-    "role": "AM Checklist",
-    "note": "To be completed by those scheduled from open to 4 PM."
+   "group": "AM Checklist",
+   "after": "t-mwe93n92jno",
+   "item": {
+    "id": "o-strips",
+    "t": "Sanitizer tested with test strips: 3-compartment sink and sani buckets",
+    "d": "Use the strips made for our sanitizer and check the reading against the range on its label. Remake anything that tests low or high.",
+    "pos": [
+     "AM Bar",
+     "AM Server",
+     "Food Runner"
+    ]
    }
   },
   {
-   "op": "group",
+   "op": "add",
    "list": "daily",
-   "from": {
-    "role": "PM CHECKLIST",
-    "note": "COMPLETED BY THOSE SCHEDULED FROM 4PM-CLOSE"
-   },
-   "to": {
-    "role": "PM Checklist",
-    "note": "Completed by those scheduled from 4 PM to close."
+   "group": "AM Checklist",
+   "after": "o-strips",
+   "item": {
+    "id": "o-handsink",
+    "t": "Handwashing sink ready: soap, paper towels, and handwashing sign",
+    "d": "Nothing in or blocking the sink; it is for handwashing only.",
+    "c": [
+     "5-205.11",
+     "6-301.11",
+     "6-301.12",
+     "6-301.14"
+    ],
+    "pos": [
+     "AM Bar",
+     "AM Server",
+     "Food Runner"
+    ]
    }
   },
   {
-   "op": "group",
+   "op": "add",
    "list": "daily",
-   "from": {
-    "role": "AM/PM CHECKLIST",
-    "note": "COMPLETED BY ANYONE SHEDULED THAT DAY"
-   },
-   "to": {
-    "role": "AM/PM Checklist",
-    "note": "Completed by anyone scheduled that day."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "t-mwe95m2q2vs",
-   "from": {
-    "t": "Place Sani Bucket next to soda machine"
-   },
-   "to": {
-    "t": "Place sani bucket next to the soda machine"
-   }
-  },
-  {
-   "op": "edit",
-   "id": "t-mwe93n92jno",
-   "from": {
-    "t": "Place Sani Bucket with rag behind bar"
-   },
-   "to": {
-    "t": "Place sani bucket with a rag behind the bar"
-   }
-  },
-  {
-   "op": "edit",
-   "id": "o-display",
-   "from": {
-    "d": "wipe bottles and displays. Labels forward and clean. Display cooler lights on."
-   },
-   "to": {
-    "d": "Wipe bottles and displays. Labels forward and clean. Display cooler lights on."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "o-garnish",
-   "from": {
-    "t": "Garnishes cut, labeled, dated, and iced,",
-    "d": "2 DAY SELF LIFE. THROW OUT AND REPLACE DO NOT RELABEL.  Lemons, limes, oranges, cucumbers, jalapeños. Lidded, labeled, in the iced-down caddy.",
-    "s": [
-     "all garnish containers with labels visible."
+   "group": "AM/PM Checklist",
+   "after": "c-welldoor",
+   "item": {
+    "id": "a-sanichange",
+    "t": "Sani bucket water changed during the shift",
+    "d": "About every 2 hours, or sooner if it is cloudy or dirty. Keep buckets off the floor.",
+    "pos": [
+     "AM Bar",
+     "PM Bar",
+     "AM Server",
+     "PM Server",
+     "Food Runner"
     ]
-   },
-   "to": {
-    "t": "Garnishes cut, labeled, dated, and iced",
-    "d": "2-day shelf life: throw out and replace; do not relabel. Lemons, limes, oranges, cucumbers, jalapeños. Lidded, labeled, in the iced-down caddy.",
-    "s": [
-     "All garnish containers with labels visible"
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "PM Checklist",
+   "after": "c-bottles",
+   "item": {
+    "id": "c-spouts",
+    "t": "Pour spouts covered and sticky bottle necks wiped",
+    "d": "Cap or cover every pour spout overnight to keep fruit flies out.",
+    "pos": [
+     "PM Bar",
+     "PM Server",
+     "Food Runner"
     ]
    }
   },
   {
    "op": "edit",
-   "id": "o-juice",
+   "id": "c-mats",
    "from": {
-    "d": "2 DAY SELF LIFE. THROW OUT AND REPLACE DO NOT RELABEL. OJ, pineapple, lime, and seasonals",
-    "s": [
-     "Juice cotainers with lables visible"
-    ]
+    "t": "Bar mats pulled, cleaned, and cleaned under",
+    "d": ""
    },
    "to": {
-    "d": "2-day shelf life: throw out and replace; do not relabel. OJ, pineapple, lime, and seasonals.",
-    "s": [
-     "Juice containers with labels visible"
-    ]
+    "t": "Bar mats pulled, washed, sanitized, and cleaned under",
+    "d": "Stand them up or hang them so they dry completely overnight; wet mats breed fruit flies."
    }
   },
   {
-   "op": "edit",
-   "id": "o-tools",
-   "from": {
-    "d": "Shakers, strainers, jiggers, yarai"
-   },
-   "to": {
-    "d": "Shakers, strainers, jiggers, yarai."
+   "op": "addgroup",
+   "list": "monthly",
+   "role": "Monthly · Deep clean",
+   "note": "Any day during the month. Check each one off when it is done."
+  },
+  {
+   "op": "add",
+   "list": "monthly",
+   "group": "Monthly · Deep clean",
+   "item": {
+    "id": "m-walls",
+    "t": "Walls behind and under the bar wiped"
    }
   },
   {
-   "op": "edit",
-   "id": "o-final",
-   "from": {
-    "d": "Photo of the whole bar from the guest side"
-   },
-   "to": {
-    "d": "Photo of the whole bar from the guest side."
+   "op": "add",
+   "list": "monthly",
+   "group": "Monthly · Deep clean",
+   "item": {
+    "id": "m-tops",
+    "t": "Tops of coolers and shelves wiped"
    }
   },
   {
-   "op": "edit",
-   "id": "o-caddies",
-   "from": {
-    "d": "Tables and bar top. To-go’s, salt, pepper, and silverware on hand."
-   },
-   "to": {
-    "d": "Tables and bar top. To-go containers, salt, pepper, and silverware on hand."
+   "op": "add",
+   "list": "monthly",
+   "group": "Monthly · Deep clean",
+   "item": {
+    "id": "m-lights",
+    "t": "Light fixtures and vents dusted"
    }
   },
   {
-   "op": "edit",
-   "id": "c-trashwall",
-   "from": {
-    "s": [
-     "Wall behind trash can by kitchen door"
-    ]
-   },
-   "to": {
-    "s": [
-     "Wall behind the trash can by the kitchen door"
-    ]
+   "op": "add",
+   "list": "monthly",
+   "group": "Monthly · Deep clean",
+   "item": {
+    "id": "m-behind",
+    "t": "Behind and under bar equipment cleaned",
+    "d": "Pull equipment out where it is safe to."
    }
   },
   {
-   "op": "edit",
-   "id": "c-bottles",
-   "from": {
-    "d": "Pull all bottles, wipe each clean, return to proper storage"
-   },
-   "to": {
-    "d": "Pull all bottles, wipe each clean, and return them to proper storage."
+   "op": "add",
+   "list": "monthly",
+   "group": "Monthly · Deep clean",
+   "item": {
+    "id": "m-icebins",
+    "t": "Under the ice bins cleaned"
    }
   },
   {
-   "op": "edit",
-   "id": "c-handsink",
-   "from": {
-    "t": "Bar handwash sink scrubbed, wiped out and sanitized",
-    "d": "Basin, faucet and handles"
-   },
-   "to": {
-    "t": "Bar handwashing sink scrubbed, wiped out, and sanitized",
-    "d": "Basin, faucet, and handles."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-floor",
-   "from": {
-    "t": "Bar floor swept, scrubed, and mopped, left clean and dry",
-    "d": "Rugs, under ice wells, behind the bar."
-   },
-   "to": {
-    "t": "Bar floor swept, scrubbed, and mopped; left clean and dry",
-    "d": "Rugs, under ice wells, and behind the bar."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-reset",
-   "from": {
-    "d": "make sure enough of each product is stocked so opener can complete opening tasks and stocking"
-   },
-   "to": {
-    "d": "Make sure enough of each product is stocked so the opener can complete opening tasks and stocking."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-icewell",
-   "from": {
-    "t": "Ice wells burned, cleaned, sanitized — no mold"
-   },
-   "to": {
-    "t": "Ice wells burned, cleaned, and sanitized — no mold"
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-station",
-   "from": {
-    "d": "stock cups, lids, straws, knives, forks, spoons, and table buckets"
-   },
-   "to": {
-    "d": "Stock cups, lids, straws, knives, forks, spoons, and table buckets."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-tents",
-   "from": {
-    "d": "At night, from every table"
-   },
-   "to": {
-    "d": "At night, from every table."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-dining",
-   "from": {
-    "d": "Broom and dustpan — not blown off"
-   },
-   "to": {
-    "d": "Broom and dustpan — not blown off."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-trash",
-   "from": {
-    "d": "Bar cans and dining trash boxes"
-   },
-   "to": {
-    "d": "Bar cans and dining trash boxes."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-drink",
-   "from": {
-    "d": "Spill trays pulled and washed, levers and backsplash cleaned, nozzles and diffusers washed and sanitized",
-    "s": [
-     "drink machine wih entire counter in view"
-    ]
-   },
-   "to": {
-    "d": "Spill trays pulled and washed, levers and backsplash cleaned, nozzles and diffusers washed and sanitized.",
-    "s": [
-     "Drink machine with the entire counter in view"
-    ]
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-italian",
-   "from": {
-    "d": "Wipe exterior and check that machine is plugged in"
-   },
-   "to": {
-    "d": "Wipe the exterior and check that the machine is plugged in."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-rest",
-   "from": {
-    "d": "Sinks, dispensers, toilets, mirrors, walls. Women’s sanitary boxes emptied, lids on. Bathrooms and hallway swept and mopped. stock toilet paper, hand towels, and handsoap",
-    "s": [
-     "Men’s toilet with seat up",
-     "mens sink",
-     "Women’s toilet with seat up",
-     "womens sink"
-    ]
-   },
-   "to": {
-    "d": "Sinks, dispensers, toilets, mirrors, and walls. Women’s sanitary boxes emptied, lids on. Bathrooms and hallway swept and mopped. Stock toilet paper, hand towels, and hand soap.",
-    "s": [
-     "Men’s toilet with seat up",
-     "Men’s sink",
-     "Women’s toilet with seat up",
-     "Women’s sink"
-    ]
-   }
-  },
-  {
-   "op": "edit",
-   "id": "o-rest",
-   "from": {
-    "d": "Soap, paper towels, toilet paper"
-   },
-   "to": {
-    "d": "Soap, paper towels, and toilet paper."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-caddy",
-   "from": {
-    "d": "must be competed each time you relabel the caddies with new fruit, at least every two days"
-   },
-   "to": {
-    "d": "Must be completed each time you relabel the caddies with new fruit, at least every two days."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-wine",
-   "from": {
-    "t": "Open wine checked, dated, and refrigerated."
-   },
-   "to": {
-    "t": "Open wine checked, dated, and refrigerated"
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-tue-cooler",
-   "from": {
-    "t": "Beer and wine cooler organized, first in first out"
-   },
-   "to": {
-    "t": "Beer and wine cooler organized, first in, first out"
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-tue-backups",
-   "from": {
-    "d": "Forks, knives, napkins, straws, to-go supplies"
-   },
-   "to": {
-    "d": "Forks, knives, napkins, straws, and to-go supplies."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-bathfloor",
-   "from": {
-    "d": "Deck brush, grout lines, behind toilets"
-   },
-   "to": {
-    "d": "Deck brush, grout lines, and behind toilets."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "t-mwe9w42rgvo",
-   "from": {
-    "t": "wipe menus"
-   },
-   "to": {
-    "t": "Wipe menus"
-   }
-  },
-  {
-   "op": "edit",
-   "id": "t-mwe9wsxkc1z",
-   "from": {
-    "t": "wipe table tents and napkin dispensers"
-   },
-   "to": {
-    "t": "Wipe table tents and napkin dispensers"
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-wed-liquor",
-   "from": {
-    "d": "Sweep under shelves, mop the closet"
-   },
-   "to": {
-    "d": "Sweep under the shelves and mop the closet."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-pingpong",
-   "from": {
-    "t": "Ping pong table full clean",
-    "d": "Top, legs, net, underside"
-   },
-   "to": {
-    "t": "Ping-pong table full clean",
-    "d": "Top, legs, net, and underside."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-fri-cups",
-   "from": {
-    "d": "Including under the mats where cups sit"
-   },
-   "to": {
-    "d": "Including under the mats where cups sit."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-cobweb",
-   "from": {
-    "d": "Rafters, fence, light strings, under benches"
-   },
-   "to": {
-    "d": "Rafters, fence, light strings, and under benches."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-sat-inv",
-   "from": {
-    "d": "Forks, knives, straws, napkins, mixers. Garnish containers clean."
-   },
-   "to": {
-    "d": "Forks, knives, straws, napkins, and mixers. Garnish containers clean."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "w-sun-fruit",
-   "from": {
-    "t": "ALL cut fruit and juices in pour bottles thrown out",
-    "d": "Pour bottles and containers go to the dishwasher"
-   },
-   "to": {
-    "t": "All cut fruit and juices in pour bottles thrown out",
-    "d": "Pour bottles and containers go to the dishwasher."
-   }
-  },
-  {
-   "op": "edit",
-   "id": "c-garnish",
-   "from": {
-    "d": "48-hour max on cut garnishes"
-   },
-   "to": {
-    "d": "48-hour max on cut garnishes."
+   "op": "add",
+   "list": "monthly",
+   "group": "Monthly · Deep clean",
+   "item": {
+    "id": "m-icemachine",
+    "t": "Ice machine checked inside for mold or slime",
+    "d": "Tell the MOD if you see any. The full clean and sanitize follows the manufacturer's schedule (usually every 6 months, by the service company)."
    }
   }
  ]
