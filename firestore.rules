@@ -18,7 +18,8 @@ service cloud.firestore {
     function managerIds() {
       return {
         'sanford': ['TjGZ7fcbmAgo4y2skvQPfuH4fJB2',   // Clay
-                    'VhBcsd2kwkQao2VjpUeafDtEd0A2']   // added Nov 13 at Clay's request
+                    'VhBcsd2kwkQao2VjpUeafDtEd0A2',   // added Nov 13 at Clay's request
+                    'p4319WV7PBRuX0kDgi98zCDCtB22']   // added Nov 13 at Clay's request (computer)
       };
     }
     function isManager(loc) {
