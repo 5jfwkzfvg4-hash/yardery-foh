@@ -1,6 +1,7 @@
 // Two-browser test against the Firebase emulator (run with: npm test).
 // Phone-width (390 px) and desktop windows, live sync, uncheck rules, offline, day rules, no sideways scroll, no console errors.
 import http from 'node:http';
+import {TUE, ny} from './dates.mjs';
 import {readFileSync, mkdirSync} from 'node:fs';
 import {createRequire} from 'node:module';
 const require = createRequire(import.meta.url);
@@ -15,9 +16,9 @@ const noCfg = cfg.replace(/firebase:\{[\s\S]*?\n  \},/, "firebase:{apiKey:'',pro
 if (testCfg === cfg || noCfg === cfg) throw new Error('config block not found');
 const server = http.createServer((q, r) => {
   const path = q.url.split('?')[0], file = path.replace(/^\/(noconfig\/)?/, '') || 'index.html';
-  if (!/^(index\.html|manage\.html|config\.js|tasks\.js|report\.js)$/.test(file)) { r.writeHead(404); return r.end(); }
+  if (!/^(index\.html|manage\.html|config\.js|tasks\.js|report\.js|proposals\/tasks\.json)$/.test(file)) { r.writeHead(404); return r.end(); }
   const body = file === 'config.js' ? (path.startsWith('/noconfig/') ? noCfg : testCfg) : readFileSync(file);
-  r.writeHead(200, {'content-type': file.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8'}); r.end(body);
+  r.writeHead(200, {'content-type': file.endsWith('.js') ? 'text/javascript' : file.endsWith('.json') ? 'application/json' : 'text/html; charset=utf-8'}); r.end(body);
 }).listen(0);
 const URL = `http://127.0.0.1:${server.address().port}/`;
 const sdkDir = new URL_('../node_modules/firebase/', import.meta.url);
@@ -31,7 +32,7 @@ const ok = (c, m) => { if (!c) throw new Error(m); };
 // A fake camera (moving test pattern) stands in for the phone camera.
 const browser = await chromium.launch({args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'], ...(process.env.CHROMIUM_PATH ? {executablePath: process.env.CHROMIUM_PATH} : {})});
 const errors = [];
-const OPEN_TIME = '2026-11-03T16:00:00Z';   // Tue Nov 3, 11 AM in Sanford
+const OPEN_TIME = ny(TUE, 11);   // the most recent Tuesday, 11 AM in Sanford
 async function open(label, opts, url = URL + '?emulator=1') {
   const ctx = await browser.newContext(opts);
   await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
@@ -194,6 +195,20 @@ await t('manager page: positions can be added and renamed everywhere', async () 
   await pm.click('#save');
   await pa.waitForFunction(() => document.querySelector('#chk-o-dust + .t .tags')?.textContent.includes('AM Bar Lead'), null, {timeout: 6000});
 });
+await t('manager page: prepared changes are offered, added in place with one tap, and reach staff after Save', async () => {
+  await pm.reload(); await pm.waitForSelector('#proposal:not([hidden])', {timeout: 8000});
+  const items = await pm.locator('#propList li').allTextContents();
+  ok(items.length === 8 && items.includes('Close · Bar breakdown: Syrup bottles wiped') && items.includes('Sunday: ALL cut fruit and juices in pour bottles thrown out'), items.join(' | '));
+  await pm.click('#propAdd'); ok(await pm.isHidden('#proposal') && !(await pm.isDisabled('#save')), 'not added');
+  ok((await pm.inputValue('#t-c-syrup')) === 'Syrup bottles wiped', 'syrup missing');
+  await pm.click('#save');
+  await pa.click('#tab-daily'); await pa.waitForSelector('#chk-c-syrup', {timeout: 6000});
+  const order = await pa.evaluate(() => [...document.querySelectorAll('#dailyLists .box')].map(b => b.id));
+  ok(order.indexOf('chk-c-wellin') === order.indexOf('chk-c-bottles') + 1 && order.indexOf('chk-c-syrup') === order.indexOf('chk-c-wellin') + 1, 'wrong place');
+  ok((await pa.textContent('#chk-c-syrup + .t .tags')).includes('PM Bar'), 'no position');
+  await pm.reload(); await pm.waitForSelector('#editor:not([hidden])'); await pm.waitForTimeout(800);
+  ok(await pm.isHidden('#proposal'), 'offered again after saving');
+});
 await t('manager page has no sideways scrolling at 390 px', async () => {
   const p = await (await browser.newContext(phone)).newPage(); await p.route(/fonts\./, r => r.abort());
   await p.route(new RegExp('www\\.gstatic\\.com/firebasejs/'), r => r.abort());
@@ -244,14 +259,14 @@ await t('Monday: closed, no checklists, Home says Closed', async () => {
 });
 await t('a phone open at lock time records the lock; then the database refuses changes', async () => {
   const H = {Authorization: 'Bearer owner'};
-  const r = await fetch('http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/locks/2026-11-03', {headers: H});
+  const r = await fetch('http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/locks/' + TUE, {headers: H});
   ok(r.status === 404, 'lock exists early');
   const ctx = await browser.newContext(phone); await ctx.route(/fonts\./, r => r.abort());
   await ctx.route(new RegExp(`www\\.gstatic\\.com/firebasejs/${ver.replace(/\./g, '\\.')}/`), r =>
     r.fulfill({contentType: 'text/javascript', body: readFileSync(new globalThis.URL(r.request().url().split('/').pop(), sdkDir))}));
-  const p = await ctx.newPage(); await p.clock.setFixedTime(new Date('2026-11-04T03:31:00Z'));
+  const p = await ctx.newPage(); await p.clock.setFixedTime(new Date(ny(TUE, 22, 31)));
   await p.goto(URL + '?emulator=1#daily'); await p.fill('#firstName', 'Cy'); await p.click('#setupForm .go');
-  let found = false; for (let i = 0; i < 40 && !found; i++) { await p.waitForTimeout(250); found = (await fetch('http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/locks/2026-11-03', {headers: H})).status === 200; }
+  let found = false; for (let i = 0; i < 40 && !found; i++) { await p.waitForTimeout(250); found = (await fetch('http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/locks/' + TUE, {headers: H})).status === 200; }
   ok(found, 'no lock record'); await ctx.close();
 });
 

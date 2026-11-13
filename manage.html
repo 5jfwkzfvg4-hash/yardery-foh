@@ -108,6 +108,12 @@ details .more{display:grid;gap:8px;margin-top:8px}
 
   <div id="editor" hidden>
     <p class="hint" id="source"></p>
+    <section class="card" id="proposal" hidden style="margin-top:12px;border-color:var(--amber)">
+      <h2 style="font-size:18px">Changes ready to add</h2><p class="sub" id="propNote"></p>
+      <ul id="propList" style="margin:10px 0;padding-left:20px"></ul>
+      <div class="row"><button type="button" class="btn primary" id="propAdd">Add these</button><button type="button" class="btn" id="propLater">Not now</button></div>
+      <p class="hint">Adding puts them in the editor. Nothing changes for staff until you tap Save.</p>
+    </section>
     <section id="daily"><h2>Daily</h2><p class="sub">Change wording, move tasks, assign positions. Changes reach every phone when you tap Save.</p><div id="dailyEd"></div>
       <button type="button" class="btn add" id="addSection">+ Add section</button></section>
     <section id="weekly" hidden><h2>Weekly</h2><p class="sub">One section per day. A task only shows on its day’s list.</p><div id="weeklyEd"></div></section>
@@ -273,7 +279,7 @@ $('addPos').addEventListener('click',()=>{const n=$('newPos').value.trim();
   if(M.positions.some(x=>x.toLowerCase()===n.toLowerCase())){toast('That position already exists.');return}
   M.positions.push(n);$('newPos').value='';render();mark();toast('Added '+n+'. Assign it on the Daily and Weekly tabs.')});
 $('newPos').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('addPos').click()}});
-$('discard').addEventListener('click',()=>{M=JSON.parse(saved);render();mark();toast('Changes discarded.')});
+$('discard').addEventListener('click',()=>{M=JSON.parse(saved);render();mark();showProposal();toast('Changes discarded.')});
 
 function problems(){
   const out=[];
@@ -304,10 +310,37 @@ tabs.forEach(t=>t.addEventListener('click',()=>show(t.dataset.tab)));
 function gate(msg,showId){$('gateMsg').textContent=msg;$('gateId').hidden=!showId;if(showId)$('uid').textContent=UID}
 $('copyId').addEventListener('click',()=>{const done=()=>toast('Device ID copied.');
   if(navigator.clipboard)navigator.clipboard.writeText(UID).then(done,()=>toast('Press and hold the ID to copy it.'));else toast('Press and hold the ID to copy it.')});
+/* Prepared changes (proposals/tasks.json, written by Claude when Clay asks by chat). Each add is skipped
+   if its task id is already in the list, so it can't be added twice; nothing is saved until Save. */
+let PROP=null;
+function pendingOps(){
+  if(!PROP||!M)return [];
+  const have=new Set(allGroups().flatMap(x=>x.g.items.map(i=>i.id)));
+  return (PROP.ops||[]).filter(o=>o.op==='add'&&o.item&&o.item.id&&!have.has(o.item.id)&&findGroup(o));
+}
+function findGroup(o){const gs=M[o.list]||[];return o.list==='weekly'&&typeof o.day==='number'?gs.find(g=>g.day===o.day):gs.find(g=>g.role===o.group)}
+function showProposal(){
+  const ops=pendingOps(),box=$('proposal');
+  let skip='';try{skip=sessionStorage.getItem('foh-prop-later')||''}catch(e){}
+  if(!ops.length||skip===PROP.id){box.hidden=true;return}
+  $('propNote').textContent=PROP.note||'';
+  $('propList').replaceChildren(...ops.map(o=>el('li',null,(o.list==='weekly'?DAYS[findGroup(o).day]:findGroup(o).role)+': '+o.item.t)));
+  box.hidden=false;
+}
+$('propAdd').addEventListener('click',()=>{
+  const ops=pendingOps();
+  ops.forEach(o=>{const g=findGroup(o),it=o.item;
+    const item={id:it.id,t:it.t,d:it.d||'',c:it.c||[],p:!!it.p,s:it.s||[],pos:(it.pos||[]).filter(p=>M.positions.includes(p)),who:[]};
+    const at=g.items.findIndex(i=>i.id===o.after);g.items.splice(at<0?g.items.length:at+1,0,item)});
+  render();mark();$('proposal').hidden=true;toast(ops.length+' tasks added. Check them, then tap Save.');
+});
+$('propLater').addEventListener('click',()=>{try{sessionStorage.setItem('foh-prop-later',PROP.id)}catch(e){}$('proposal').hidden=true});
+fetch('proposals/tasks.json?'+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(p=>{PROP=p;if(M)showProposal()}).catch(()=>{});
+
 function openEditor(){
   $('gate').hidden=true;$('editor').hidden=false;$('tabs').hidden=false;$('bar').hidden=false;
   $('source').textContent=fromSaved?'':'This is the built-in list. Your first Save makes this page the place tasks are edited from now on.';
-  render();mark();
+  render();mark();showProposal();
 }
 async function connect(){
   const f=C.firebase||{};

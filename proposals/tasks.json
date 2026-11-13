@@ -1,0 +1,22 @@
+{
+  "id": "2026-11-13-closing-additions",
+  "note": "New daily closing tasks and a Sunday fruit-and-juice discard (requested Nov 13). Already-daily items were left out.",
+  "ops": [
+    {"op": "add", "list": "daily", "group": "Close · Bar breakdown", "after": "c-bottles",
+     "item": {"id": "c-wellin", "t": "Inside of each well wiped out", "d": "After the bottles are pulled and wiped", "pos": ["PM Bar"]}},
+    {"op": "add", "list": "daily", "group": "Close · Bar breakdown", "after": "c-wellin",
+     "item": {"id": "c-syrup", "t": "Syrup bottles wiped", "pos": ["PM Bar"]}},
+    {"op": "add", "list": "daily", "group": "Close · Bar breakdown", "after": "c-sinks",
+     "item": {"id": "c-handsink", "t": "Bar hand sink scrubbed, wiped out and sanitized", "d": "Basin, faucet and handles", "pos": ["PM Bar"]}},
+    {"op": "add", "list": "daily", "group": "Close · Bar breakdown", "after": "c-draft",
+     "item": {"id": "c-drainbkt", "t": "Draft drain bucket emptied and washed", "pos": ["PM Bar"]}},
+    {"op": "add", "list": "daily", "group": "Close · Bar breakdown", "after": "c-drainbkt",
+     "item": {"id": "c-toolbox", "t": "Toolbox (under the taps) surface and doors wiped", "pos": ["PM Bar"]}},
+    {"op": "add", "list": "daily", "group": "Close · Bar breakdown", "after": "c-toolbox",
+     "item": {"id": "c-welldoor", "t": "Service well door wiped down", "pos": ["PM Bar"]}},
+    {"op": "add", "list": "daily", "group": "Close · Dining & restrooms", "after": "c-station",
+     "item": {"id": "c-tents", "t": "Napkin dispensers and table tents put back by the soda machine", "d": "At night, from every table", "pos": ["PM Server"]}},
+    {"op": "add", "list": "weekly", "day": 0,
+     "item": {"id": "w-sun-fruit", "t": "ALL cut fruit and juices in pour bottles thrown out", "d": "Pour bottles and containers go to the dishwasher"}}
+  ]
+}
