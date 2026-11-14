@@ -50,6 +50,7 @@ const desk = {viewport: {width: 1280, height: 900}, permissions: ['camera']};
 const A = await open('phone', phone), B = await open('desktop', desk);
 const pa = A.page, pb = B.page;
 const pressed = (p, id) => p.getAttribute('#chk-' + id, 'aria-pressed');
+const openDone = p => p.evaluate(() => document.querySelectorAll('details.donebox').forEach(d => { d.open = true; }));
 const waitPressed = (p, id, v) => p.waitForFunction(([id, v]) => document.getElementById('chk-' + id)?.getAttribute('aria-pressed') === v, [id, v], {timeout: 5000});
 
 await t('first visit asks for a first name', async () => { ok(await pa.isVisible('#setup'), 'setup hidden'); });
@@ -78,13 +79,22 @@ await t('desktop Daily tab shows it checked by Ana with the time', async () => {
   await pb.click('#tab-daily'); await waitPressed(pb, 'o-dust', 'true');
   const who = await pb.textContent('#chk-o-dust + .t .who'); ok(/^Ana · \d{1,2}:\d{2}/.test(who), who);
 });
+await t('a checked task leaves the list on every phone and shows under "Done today" with who and when', async () => {
+  const inMain = await pb.evaluate(() => !!document.querySelector('#dailyLists > ul.list #chk-o-dust'));
+  const inDone = await pb.evaluate(() => !!document.querySelector('#dailyLists details.donebox #chk-o-dust'));
+  ok(!inMain && inDone, 'main ' + inMain + ' done ' + inDone);
+  ok(/^Done today \(\d+\)$/.test(await pb.textContent('#dailyLists details.donebox summary')), 'summary');
+  ok(await pb.isHidden('#chk-o-dust'), 'done section should start closed');
+  await pa.click('#tab-daily'); await pa.evaluate(() => { const d = document.querySelector('#dailyLists details.donebox'); if (d) { d.open = true; d.scrollIntoView(); } }); await pa.screenshot({path: 'tests/shots/phone-done.png'});
+  await pa.evaluate(() => document.querySelectorAll('details.donebox').forEach(d => { d.open = false; }));
+});
 await t("another employee can't uncheck it (message shown, stays checked)", async () => {
-  await pb.click('#chk-o-dust'); await pb.waitForSelector('.toast.show');
+  await openDone(pb); await pb.click('#chk-o-dust'); await pb.waitForSelector('.toast.show');
   ok((await pb.textContent('#toast')).includes('Only Ana or a manager'), await pb.textContent('#toast'));
   await pb.waitForTimeout(800); ok(await pressed(pb, 'o-dust') === 'true', 'was unchecked');
 });
 await t('the person who checked it can uncheck it; desktop updates live', async () => {
-  await pa.click('#chk-o-dust'); await waitPressed(pb, 'o-dust', 'false');
+  await openDone(pa); await pa.click('#chk-o-dust'); await waitPressed(pb, 'o-dust', 'false');
 });
 await t('desktop check shows on phone live', async () => {
   await pb.click('#chk-o-bartop'); await waitPressed(pa, 'o-bartop', 'true');
@@ -130,7 +140,7 @@ await t('photo task: camera opens (camera only), Take photo shows a preview with
 });
 await t('photo task: the other phone sees the check and can view the photo', async () => {
   await pb.click('#tab-daily'); await waitPressed(pb, 'o-garnish', 'true');
-  await pb.click('#chk-o-garnish + .t .photo-link'); await pb.waitForSelector('#viewImgs img', {timeout: 6000});
+  await openDone(pb); await pb.click('#chk-o-garnish + .t .photo-link'); await pb.waitForSelector('#viewImgs img', {timeout: 6000});
   ok((await pb.getAttribute('#viewImgs img', 'src')).startsWith('data:image/jpeg'), 'no image'); await pb.click('#viewClose');
 });
 await t('photo task with two spots asks for each (Men\u2019s, then Women\u2019s restroom)', async () => {
@@ -200,7 +210,7 @@ await t('a manager can uncheck anyone', async () => {
   const ben = devs.documents.find(d => d.fields.name.stringValue === 'Ben').name.split('/').pop();
   await fetch(base + 'managers?documentId=' + ben, {method: 'POST', headers: H, body: JSON.stringify({fields: {name: {stringValue: 'Ben'}}})});
   await pb.waitForTimeout(800);
-  await pb.click('#tab-daily'); await pb.click('#chk-o-taps'); await waitPressed(pa, 'o-taps', 'false');
+  await pb.click('#tab-daily'); await openDone(pb); await pb.click('#chk-o-taps'); await waitPressed(pa, 'o-taps', 'false');
 });
 await t('staff page shows the Manager page link only on manager phones', async () => {
   await pb.reload(); await pb.click('#tab-home'); await pb.waitForSelector('.mgr-home a.mgr:not([hidden])', {timeout: 8000});

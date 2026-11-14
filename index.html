@@ -131,6 +131,9 @@ a.tag{color:var(--pine);border-color:currentColor}
 .nffil{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
 .nffil button{font:600 13px var(--body);padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
 .nffil button[aria-pressed="true"]{background:var(--pine);border-color:var(--pine);color:var(--pine-ink)}
+.alldone{margin:0 0 4px;padding:10px 14px;border:1px dashed var(--line);border-radius:14px;color:var(--done);font-weight:600;font-size:14px}
+.donebox{margin-top:26px}.donebox summary{cursor:pointer;font:700 16px var(--display);color:var(--done);padding:6px 0 10px}
+.donebox .dg{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 .nflist{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .nfrow{display:flex;gap:10px;align-items:flex-start;width:100%;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .nfrow:first-child{border-top:0}.nfrow .t{flex:1}.nfrow .go{color:var(--muted);font-weight:700}
@@ -349,8 +352,11 @@ const timeFmt=new Intl.DateTimeFormat([],{hour:'numeric',minute:'2-digit',timeZo
 function build(sc){
   const S=scopes[sc], data=live[sc], mount=$(S.mount);
   const fid=document.activeElement&&mount.contains(document.activeElement)?document.activeElement.id:'';
+  /* finished tasks leave the list for everyone and move to a closed "Done" section at the bottom */
+  const wasOpen=mount.querySelector('details.donebox')?mount.querySelector('details.donebox').open:false;
+  let nextFocus='';if(fid){const b=$(fid);const li=b&&b.closest('.task');const nx=li&&li.nextElementSibling&&li.nextElementSibling.querySelector('.box');nextFocus=nx?nx.id:''}
   mount.replaceChildren();
-  let total=0,done=0;
+  let total=0,done=0;const doneRows=[];
   S.groups().forEach(g=>{
     const h=el('h3','grp');h.appendChild(el('span',null,g.role));
     if(g.day===DOW&&sc==='week')h.appendChild(el('span','tag today','Today'));
@@ -388,13 +394,21 @@ function build(sc){
           saveCheck(sc,id,[]);
         }
       });
-      li.append(box,t);ul.appendChild(li);
+      li.append(box,t);
+      if(rec){const gl=el('span','dg',g.role);t.insertBefore(gl,t.firstChild);doneRows.push([rec.t,li])}else ul.appendChild(li);
     });
-    gc.textContent=gd+'/'+g.items.length;mount.appendChild(ul);
+    gc.textContent=gd+'/'+g.items.length;
+    if(ul.childNodes.length)mount.appendChild(ul);else mount.appendChild(el('p','alldone','✓ All done'));
   });
+  if(doneRows.length){
+    const det=el('details','donebox');det.open=wasOpen;
+    det.appendChild(el('summary',null,({day:'Done today',week:'Done this week',month:'Done this month'}[sc])+' ('+doneRows.length+')'));
+    const dl=el('ul','list');doneRows.sort((a,b)=>b[0]-a[0]).forEach(([,li])=>dl.appendChild(li));det.appendChild(dl);mount.appendChild(det);
+  }
   $(S.bar).style.width=(total?done/total*100:0)+'%';
   $(S.count).textContent=done+' of '+total+' done';
-  if(fid&&$(fid))$(fid).focus({preventScroll:true});
+  const fb2=fid&&$(fid);
+  if(fb2&&fb2.offsetParent)fb2.focus({preventScroll:true});else if(nextFocus&&$(nextFocus)&&$(nextFocus).offsetParent)$(nextFocus).focus({preventScroll:true});
   renderHome();
 }
 const DAYNAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
