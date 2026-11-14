@@ -75,7 +75,9 @@ CAL.deliveries.push(ev('🚚 Wayne Densch (beer) delivery — Sanford', TUE + 'T
   ev('🚚 US Foods delivery — Sanford', WED + 'T12:00:00Z', {allDay: true}), ev('Dentist', TUE + 'T15:00:00Z'));
 CAL.bookings.push(ev('Faith Rodrigues', ny(TUE, 17), {desc: 'Catering order status: Confirmed\nCustomer info:\nFaith Rodrigues\nfaith@example.com\n(407) 555-0100\nGuest count: 20\nOccasion: 30th birthday \nTimeline:\n5:00 PM to 8:00 PM: Birthday\n20 Standard Package Detail - Burgers = $500.00\nTotal = $650.00'}),
   ev('Mateo Correa', ny(FRI, 18), {desc: 'Catering order status: Tentative\nGuest count: 50\nOccasion: Mateo Correa reunion\nTimeline:\n6:00 PM to 10:00 PM: Reunion\n50 Deluxe Package Detail = $1250.00'}),
-  ev('Staff meeting', ny(WED, 10), {desc: 'Bring notes'}));
+  ev('Staff meeting', ny(WED, 10), {desc: 'Bring notes'}),
+  ev('Amelia Mach', ny(WED, 11, 30), {desc: 'Catering order status: Confirmed\nGuest count: 15\nOccasion: Reception\nTimeline:\n11:30 AM to 2:30 AM: Event\n15 deluxe Package Detail'}),
+  ev('Brunch Party', ny(WED, 11, 30), {desc: 'Guest count: 28\nOccasion: Rehearsal brunch\nTimeline:\n11:30 AM to 2:30 PM: Brunch'}));
 CAL.holidays.push(ev('Thanksgiving Day', FRI + 'T12:00:00Z', {allDay: true}));
 const at = iso => { ctx.NOW_FOR_TESTS = Date.parse(iso); vm.runInContext('NOW_FOR_TESTS=' + ctx.NOW_FOR_TESTS, ctx); };
 
@@ -137,6 +139,8 @@ t('board: beer deliveries only, cleaned labels, "if ordered" kept as a flag', ()
 });
 t('board: parties with time, guests, occasion, package; no names, contacts or prices; other stores and non-bookings left out', () => {
   const e = B.events || [], j = JSON.stringify(e);
+  const wed = e.filter(x => x.day === WED); ok(wed.length === 2 && wed.every(x => x.time === '11:30 AM' || x.time === '11:30 AM–2:30 PM') && wed.some(x => x.time === '11:30 AM–2:30 PM') && wed.some(x => x.pkg === 'Deluxe package'), JSON.stringify(wed));
+  e.splice(0, e.length, ...e.filter(x => x.day !== WED));
   ok(e.length === 2 && e[0].time === '5:00–8:00 PM' && e[0].guests === 20 && e[0].what === '30th birthday' && e[0].pkg === 'Standard package', j);
   ok(e[1].tentative === true && e[1].what === '' && !/Faith|Mateo|Correa|example|407|\$/.test(j), j);
 });

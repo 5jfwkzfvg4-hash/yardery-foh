@@ -163,10 +163,16 @@ function events_(start, end, C) {   // the store's booking calendar (address sta
       if (!g) return;   // only bookings; never show other calendar titles (they can be customer names)
       var occ = (d.match(/Occasion:\s*([^\n]+)/i) || [])[1] || '', names = e.getTitle().toLowerCase().split(/\s+/);
       occ = occ.trim(); if (names.some(function (n) { return n.length > 2 && occ.toLowerCase().indexOf(n) >= 0; })) occ = '';
-      var tl = d.match(/(\d{1,2}:\d{2})\s*([AP]M)\s*to\s*(\d{1,2}:\d{2})\s*([AP]M)/i), time;
-      if (tl) time = tl[1] + (tl[2].toUpperCase() === tl[4].toUpperCase() ? '' : ' ' + tl[2].toUpperCase()) + '–' + tl[3] + ' ' + tl[4].toUpperCase();
-      else time = Utilities.formatDate(e.getStartTime(), tz, 'h:mm a');
+      /* start from the calendar event; end from the booking's Timeline, shown only if it comes after the start */
+      var start = Utilities.formatDate(e.getStartTime(), tz, 'h:mm a'), time = start;
+      var tl = d.match(/(\d{1,2}:\d{2})\s*([AP]M)\s*to\s*(\d{1,2}:\d{2})\s*([AP]M)/i);
+      if (tl) {
+        var mins = function (hm, ap) { var p = hm.split(':'); return (Number(p[0]) % 12 + (/p/i.test(ap) ? 12 : 0)) * 60 + Number(p[1]); };
+        var sm = start.split(' '), endAp = tl[4].toUpperCase();
+        if (mins(tl[3], endAp) > mins(sm[0], sm[1])) time = sm[1] === endAp ? sm[0] + '–' + tl[3] + ' ' + endAp : start + '–' + tl[3] + ' ' + endAp;
+      }
       var pkg = (d.match(/(Standard|Deluxe|Taco Bar)\s+Package/i) || [])[1];
+      if (pkg) pkg = pkg.charAt(0).toUpperCase() + pkg.slice(1).toLowerCase();
       out.push({day: dayOf_(e, tz), time: time, guests: Number(g[1]), what: occ.slice(0, 60), pkg: pkg ? pkg + ' package' : '',
         tentative: /Catering order status:\s*Tentative/i.test(d)});
     });
