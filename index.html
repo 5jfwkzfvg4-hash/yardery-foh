@@ -103,6 +103,12 @@ a.tag{color:var(--pine);border-color:currentColor}
 .toast.show{opacity:1}
 .mgr-home{margin:14px 0 0}
 .duty{margin:0 0 14px;font-weight:600}
+#home>.grp:first-child{margin-top:0}
+#home .home{grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px}
+#home .sum{padding:12px 12px 14px;gap:6px}
+#home .sum .lbl{font-size:11px;letter-spacing:.06em}
+#home .sum .pct{font-size:34px}
+#home .sum .chips{display:none}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin:0 0 14px}
 .card h2{font-size:20px}.card h3{font:700 16px/1.25 var(--display);margin:0 0 8px;color:var(--pine)}
 .rem{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
@@ -167,9 +173,7 @@ a.tag{color:var(--pine);border-color:currentColor}
   </div>
 
   <section id="home">
-    <div class="note duty" id="duty"></div>
-    <div class="card" id="todayCard"><h2 id="todayTitle">Today</h2><ul class="rem" id="reminders"></ul></div>
-    <h3 class="grp" style="margin-top:4px">Progress</h3>
+    <h3 class="grp" style="margin-top:0">Progress</h3>
     <div class="home">
       <button type="button" class="sum" id="sumDaily" data-go="daily">
         <span class="lbl">Daily</span>
@@ -186,6 +190,8 @@ a.tag{color:var(--pine);border-color:currentColor}
       </button>
     </div>
     <div class="card" id="teamCard" style="margin-top:14px"><h3>Team today</h3><ul class="team" id="team"></ul></div>
+    <div class="note duty" id="duty"></div>
+    <div class="card" id="todayCard"><h2 id="todayTitle">Today</h2><ul class="rem" id="reminders"></ul></div>
     <div class="card" id="soonCard" hidden><h3>Coming up: next 7 days</h3><ul class="soon" id="soonList"></ul></div>
     <div class="note standards" id="standards" hidden><strong id="stdTitle"></strong><ul id="stdList"></ul><p class="std-src" id="stdSrc"></p></div>
     <p class="mgr-home"><a class="linkbtn mgr" href="manage.html" hidden>Manager page: edit and assign tasks</a></p>
