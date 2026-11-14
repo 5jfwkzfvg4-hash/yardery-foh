@@ -232,7 +232,7 @@ await t('manager page: rename, assign a position, move and add tasks, Save; staf
   ok((await pm.inputValue('#t-o-dust')) === 'Walls, ceilings, and lights brushed', 'built-in list not loaded');
   ok(await pm.locator('.chip, details.people, #tabs button[data-tab=positions]').count() === 0, 'position/person options still shown');
   await pm.fill('#t-o-dust', 'Walls, ceilings, lights and fans brushed');
-  await pm.locator('li:has(#t-o-taps) select.move').selectOption({label: 'Daily › Close · Bar breakdown'});
+  await pm.locator('li:has(#t-o-taps) select[aria-label="Move to section"]').selectOption({label: 'Daily › Close · Bar breakdown'});
   await pm.locator('.grp', {has: pm.locator('#t-c-tvs')}).locator('.btn.add').click();
   await pm.keyboard.type('Patio heaters off');
   ok(!(await pm.isDisabled('#save')), 'save disabled');
@@ -252,6 +252,50 @@ await t('manager page: a task with no wording cannot be saved', async () => {
   await pm.locator('.grp').first().locator('.btn.add').click(); await pm.click('#save');
   await pm.waitForSelector('.toast.show'); ok((await pm.textContent('#toast')).includes('has no wording'), await pm.textContent('#toast'));
   await pm.click('#discard'); ok(await pm.isDisabled('#save'), 'discard failed');
+});
+await t('manager page: photos (count, labels, not all required), repeat checks and Copy to', async () => {
+  const card = pm.locator('li.task:has(#t-o-glass)');
+  await card.locator('details > summary').first().click();
+  await card.locator('label.fld:has-text("Photos required") select').selectOption('2');
+  const labels = card.locator('.phlabels input'); await labels.nth(0).fill('Wine glasses'); await labels.nth(1).fill('Pint glasses');
+  await card.locator('label.check:has-text("Every photo is required") input').uncheck();
+  await card.locator('label.fld:has-text("Checks needed each day") select').selectOption('2');
+  ok(await card.locator('label.fld:has-text("Time between checks")').isVisible(), 'gap field hidden');
+  ok((await card.locator('details > summary').first().textContent()).includes('2 photos · 2 checks'), await card.locator('details > summary').first().textContent());
+  await card.locator('select[aria-label="Copy to another section"]').selectOption({label: 'Weekly › Tuesday · Storage & backups'});
+  await pm.click('#save');
+  await pa.click('#tab-daily'); await pa.waitForFunction(() => (document.querySelector('#chk-o-glass + .t') || {}).textContent?.includes('Photos: Wine glasses + Pint glasses (at least the first)'), null, {timeout: 6000});
+  ok((await pa.textContent('#chk-o-glass + .t')).includes('0 of 2 checks'), 'no round counter');
+  // check 1: one photo is enough (Finish), box shows 1/2 and the next-check line
+  await pa.click('#chk-o-glass'); await pa.waitForFunction(() => !document.getElementById('camSnap').disabled, null, {timeout: 6000});
+  ok(await pa.isHidden('#camFinish'), 'Finish before the first photo');
+  await pa.click('#camSnap'); await pa.click('#camUse');
+  await pa.waitForFunction(() => !document.getElementById('camFinish').hidden && !document.getElementById('camSnap').disabled, null, {timeout: 6000});
+  await pa.click('#camFinish');
+  await pa.waitForFunction(() => document.getElementById('chk-o-glass').textContent === '1/2', null, {timeout: 6000});
+  ok((await pa.textContent('#chk-o-glass + .t')).includes('1 of 2 checks · Next check: now'), await pa.textContent('#chk-o-glass + .t'));
+  // check 2 completes it: moves to Done
+  await pa.click('#chk-o-glass'); await pa.waitForFunction(() => !document.getElementById('camSnap').disabled, null, {timeout: 6000});
+  await pa.click('#camSnap'); await pa.click('#camUse'); await pa.waitForFunction(() => !document.getElementById('camFinish').hidden && !document.getElementById('camSnap').disabled, null, {timeout: 6000}); await pa.click('#camFinish');
+  await pb.click('#tab-daily'); await pb.waitForFunction(() => !!document.querySelector('#dailyLists details.donebox #chk-o-glass'), null, {timeout: 6000});
+  ok((await pb.textContent('#chk-o-glass + .t')).includes('All 2 checks done'), 'not marked done on the other phone');
+  ok(await pa.evaluate(() => [...document.querySelectorAll('#weeklyLists .ttl')].some(x => x.textContent === 'Glassware stocked: wine, rocks, Collins, pints')), 'copy missing from Tuesday weekly');
+});
+await t('repeat check with a 2-hour wait: countdown shows and an early tap is refused', async () => {
+  const card = pm.locator('li.task:has(#t-o-juice)');
+  await card.locator('details > summary').first().click();
+  await card.locator('label.fld:has-text("Checks needed each day") select').selectOption('4');
+  await card.locator('label.fld:has-text("Time between checks") select').selectOption('120');
+  await pm.click('#save');
+  await pa.waitForFunction(() => (document.querySelector('#chk-o-juice + .t') || {}).textContent?.includes('0 of 4 checks'), null, {timeout: 6000});
+  await pa.click('#chk-o-juice');
+  await pa.waitForFunction(() => document.getElementById('chk-o-juice').textContent === '1/4', null, {timeout: 6000});
+  const line = await pa.textContent('#chk-o-juice + .t .reps'); ok(/1 of 4 checks · Next check in (1h 59m|2h 0m)/.test(line), line);
+  await pa.click('#chk-o-juice'); await pa.waitForSelector('.toast.show'); ok(/^Next check in /.test(await pa.textContent('#toast')), await pa.textContent('#toast'));
+  ok(await pa.textContent('#chk-o-juice') === '1/4', 'second check allowed too early');
+  await pb.waitForFunction(() => /Next check in/.test((document.querySelector('#chk-o-juice + .t .reps') || {}).textContent || ''), null, {timeout: 6000});
+  await pa.click('#tab-home'); await pa.click('#nfBtn'); ok((await pa.textContent('#nfList')).includes('1 of 4 checks'), 'not finished does not show progress');
+  await pa.click('#tab-daily');
 });
 await t('manager page: Arrange order shows one line per task; dragging the handle reorders it for staff', async () => {
   await pm.click('#arrangeBtn'); ok(await pm.locator('.arow[data-id]').count() > 30 && await pm.locator('textarea:visible').count() === 0, 'not compact');

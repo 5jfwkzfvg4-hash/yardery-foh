@@ -78,33 +78,51 @@
     }
     function rows(items, checks, kind) {
       return items.map(function (it) {
-        var rec = checks[it.id], tags = [];
+        var rec = checks[it.id], ok = rec && rec.done, tags = [];
         if (it.p) tags.push(rec && rec.photos && rec.photos.length ? 'Photo' : '<b>Photo required</b>');
-        var status = rec
-          ? '<td class="ok">&#10003; Done</td><td>' + esc(rec.name) + '<br><span class="t">' + (rec.day && rec.day !== day ? esc(shortDate(rec.day).slice(4)) + ' ' : '') + clock(rec.at, offset) + '</span></td>'
-          : '<td class="no">&#10007; NOT DONE</td><td></td>';
-        return '<tr class="' + (rec ? 'd' : 'n') + '">' + status + '<td><b>' + esc(it.t) + '</b>' +
+        if (rec && rec.need > 1) tags.push(rec.rounds.length + ' of ' + rec.need + ' checks');
+        else if ((it.r || 1) > 1) tags.push('0 of ' + it.r + ' checks');
+        var whoWhen = rec ? rec.rounds.map(function (r) { return esc(r.name) + ' <span class="t">' + (r.day && r.day !== day ? esc(shortDate(r.day).slice(4)) + ' ' : '') + clock(r.at, offset) + '</span>'; }).join('<br>') : '';
+        var status = ok ? '<td class="ok">&#10003; Done</td><td>' + whoWhen + '</td>'
+          : '<td class="no">&#10007; NOT DONE' + (rec ? '<br>(' + rec.rounds.length + ' of ' + rec.need + ')' : '') + '</td><td>' + whoWhen + '</td>';
+        return '<tr class="' + (ok ? 'd' : 'n') + '">' + status + '<td><b>' + esc(it.t) + '</b>' +
           (it.d ? '<div class="dd">' + esc(it.d) + '</div>' : '') +
           (tags.length ? '<div class="tg">' + tags.join(' · ') + '</div>' : '') + photoCell(rec) + '</td></tr>';
       }).join('');
     }
     function table(title, items, checks, note) {
-      var done = items.filter(function (i) { return checks[i.id]; }).length;
+      var done = items.filter(function (i) { return checks[i.id] && checks[i.id].done; }).length;
       return '<h3>' + esc(title) + ' <span class="c">' + done + ' of ' + items.length + '</span></h3>' +
         (note ? '<p class="note">' + esc(note) + '</p>' : '') +
         '<table><thead><tr><th style="width:15%">Status</th><th style="width:17%">Who · when</th><th>Task</th></tr></thead><tbody>' +
         rows(items, checks) + '</tbody></table>';
     }
-    var dayChecks = data.dayChecks || {}, weekChecks = {};
-    Object.keys(data.weekChecks || {}).forEach(function (k) { if ((data.weekChecks[k].day || '') === day) weekChecks[k] = data.weekChecks[k]; });
-    var daily = data.tasks.daily || [], weekly = data.tasks.weekly || [], monthly = data.tasks.monthly || [], monthChecks = data.monthChecks || {};
+    var daily = data.tasks.daily || [], weekly = data.tasks.weekly || [], monthly = data.tasks.monthly || [];
+    /* repeat checks: checks/{id}, {id}~2, {id}~3 … are one task; done when it has all the checks it needs (it.r) */
+    var need = {};
+    [daily, weekly, monthly].forEach(function (L) { L.forEach(function (g) { (g.items || []).forEach(function (i) { need[i.id] = i.r || 1; }); }); });
+    function agg(raw) {
+      var by = {}, out = {};
+      Object.keys(raw || {}).forEach(function (k) { var b = k.split('~')[0]; (by[b] = by[b] || []).push(raw[k]); });
+      Object.keys(by).forEach(function (b) {
+        var rs = by[b].sort(function (x, y) { return x.at - y.at; }), last = rs[rs.length - 1], n = need[b] || 1;
+        out[b] = {name: last.name, at: last.at, day: last.day, rounds: rs, need: n, done: rs.length >= n,
+          photos: [].concat.apply([], rs.map(function (r) { return r.photos || []; })),
+          slots: [].concat.apply([], rs.map(function (r) { return (r.photos || []).map(function (_, k) { return (r.slots || [])[k] || ''; }); }))};
+      });
+      return out;
+    }
+    var weekRaw = {};
+    Object.keys(data.weekChecks || {}).forEach(function (k) { if ((data.weekChecks[k].day || '') === day) weekRaw[k] = data.weekChecks[k]; });
+    var dayChecks = agg(data.dayChecks), weekChecks = agg(weekRaw), monthChecks = agg(data.monthChecks);
+    var isD = function (c, id) { return c[id] && c[id].done; };
     var all = [].concat.apply([], daily.map(function (g) { return g.items; }));
-    var dDone = all.filter(function (i) { return dayChecks[i.id]; }).length;
+    var dDone = all.filter(function (i) { return isD(dayChecks, i.id); }).length;
     var wg = weekly.filter(function (g) { return g.day === dw; })[0];
-    var wDone = wg ? wg.items.filter(function (i) { return weekChecks[i.id]; }).length : 0;
+    var wDone = wg ? wg.items.filter(function (i) { return isD(weekChecks, i.id); }).length : 0;
     var inToday = {}; if (wg) wg.items.forEach(function (i) { inToday[i.id] = 1; });
-    var extra = [].concat.apply([], weekly.map(function (g) { return g.items; })).filter(function (i) { return weekChecks[i.id] && !inToday[i.id]; });
-    var missing = all.filter(function (i) { return !dayChecks[i.id]; }).concat(wg ? wg.items.filter(function (i) { return !weekChecks[i.id]; }) : []);
+    var extra = [].concat.apply([], weekly.map(function (g) { return g.items; })).filter(function (i) { return isD(weekChecks, i.id) && !inToday[i.id]; });
+    var missing = all.filter(function (i) { return !isD(dayChecks, i.id); }).concat(wg ? wg.items.filter(function (i) { return !isD(weekChecks, i.id); }) : []);
     var pct = all.length ? Math.round(dDone / all.length * 100) : 0;
     var html = '<!doctype html><html><head><meta charset="utf-8"><title>FOH Cleaning Checklist — ' + esc(shortDate(day)) + '</title><style>' +
       'body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11pt;margin:0}' +

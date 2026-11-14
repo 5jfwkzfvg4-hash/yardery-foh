@@ -25,6 +25,11 @@ through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff 
 - **Daily / Weekly / Monthly tabs:** change a task's wording or details, **Move to…** another section or day,
   **Remove** (tap twice), **+ Add task**. Daily and Monthly sections can be added, renamed, reordered and removed;
   Weekly has one section per day. **Photo & Food Code** holds the Photo tag, photo spots and code links.
+- **Photos, checks & Food Code** (on each task): photos required (0–6) with a label for each, whether every photo
+  is required (otherwise staff can tap Finish after the first), checks needed each day (1–12) and the time between
+  checks. Repeat checks show who/when for each check, "2 of 4 checks · Next check in 1h 24m", and the task is done
+  (and moves to Done) after the last check. The database enforces the order and the wait.
+- **Copy to…** puts a copy of a task on another list too (checked off separately there).
 - **☰ Arrange order:** switches to one line per task; drag the ☰ handle (finger or mouse) to a new spot, or use ↑ ↓.
   Tap **Done arranging**, then **Save**.
 - Nothing changes for staff until you tap **Save**; then every phone shows the new list within seconds.

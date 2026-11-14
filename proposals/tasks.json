@@ -1,307 +1,50 @@
 {
- "id": "2026-11-14-sop-additions-3",
- "note": "Bar-guide additions (Nov 13), SOP/memo items and outdoor heater tasks (Nov 14).",
+ "id": "2026-11-14-repeat-checks",
+ "note": "Repeat checks: these tasks need 4 checks a day, at least 2 hours apart (requested Nov 14).",
  "ops": [
   {
-   "op": "add",
-   "list": "daily",
-   "group": "AM Checklist",
-   "after": "t-mwe93n92jno",
-   "item": {
-    "id": "o-strips",
-    "t": "Sanitizer tested with test strips: 3-compartment sink and sani buckets",
-    "d": "Use the strips made for our sanitizer and check the reading against the range on its label. Remake anything that tests low or high.",
-    "pos": [
-     "AM Bar",
-     "AM Server",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "AM Checklist",
-   "after": "o-strips",
-   "item": {
-    "id": "o-handsink",
-    "t": "Handwashing sink ready: soap, paper towels, and handwashing sign",
-    "d": "Nothing in or blocking the sink; it is for handwashing only.",
-    "c": [
-     "5-205.11",
-     "6-301.11",
-     "6-301.12",
-     "6-301.14"
-    ],
-    "pos": [
-     "AM Bar",
-     "AM Server",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "AM/PM Checklist",
-   "after": "c-welldoor",
-   "item": {
-    "id": "a-sanichange",
-    "t": "Sani bucket water changed during the shift",
-    "d": "About every 2 hours, or sooner if it is cloudy or dirty. Keep buckets off the floor.",
-    "pos": [
-     "AM Bar",
-     "PM Bar",
-     "AM Server",
-     "PM Server",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "PM Checklist",
-   "after": "c-bottles",
-   "item": {
-    "id": "c-spouts",
-    "t": "Pour spouts covered and sticky bottle necks wiped",
-    "d": "Cap or cover every pour spout overnight to keep fruit flies out.",
-    "pos": [
-     "PM Bar",
-     "PM Server",
-     "Food Runner"
-    ]
+   "op": "edit",
+   "id": "a-sanichange",
+   "from": {},
+   "to": {
+    "r": 4,
+    "gap": 120
    }
   },
   {
    "op": "edit",
-   "id": "c-mats",
-   "from": {
-    "t": "Bar mats pulled, cleaned, and cleaned under",
-    "d": ""
-   },
+   "id": "o-caddies",
+   "from": {},
    "to": {
-    "t": "Bar mats pulled, washed, sanitized, and cleaned under",
-    "d": "Stand them up or hang them so they dry completely overnight; wet mats breed fruit flies."
-   }
-  },
-  {
-   "op": "addgroup",
-   "list": "monthly",
-   "role": "Monthly · Deep clean",
-   "note": "Any day during the month. Check each one off when it is done."
-  },
-  {
-   "op": "add",
-   "list": "monthly",
-   "group": "Monthly · Deep clean",
-   "item": {
-    "id": "m-walls",
-    "t": "Walls behind and under the bar wiped"
-   }
-  },
-  {
-   "op": "add",
-   "list": "monthly",
-   "group": "Monthly · Deep clean",
-   "item": {
-    "id": "m-tops",
-    "t": "Tops of coolers and shelves wiped"
-   }
-  },
-  {
-   "op": "add",
-   "list": "monthly",
-   "group": "Monthly · Deep clean",
-   "item": {
-    "id": "m-lights",
-    "t": "Light fixtures and vents dusted"
-   }
-  },
-  {
-   "op": "add",
-   "list": "monthly",
-   "group": "Monthly · Deep clean",
-   "item": {
-    "id": "m-behind",
-    "t": "Behind and under bar equipment cleaned",
-    "d": "Pull equipment out where it is safe to."
-   }
-  },
-  {
-   "op": "add",
-   "list": "monthly",
-   "group": "Monthly · Deep clean",
-   "item": {
-    "id": "m-icebins",
-    "t": "Under the ice bins cleaned"
-   }
-  },
-  {
-   "op": "add",
-   "list": "monthly",
-   "group": "Monthly · Deep clean",
-   "item": {
-    "id": "m-icemachine",
-    "t": "Ice machine burned, cleaned, and sanitized inside; air filters cleaned",
-    "d": "Turn the machine off and burn (melt) all the ice in the bin. Clean, then sanitize, the inside of the bin and every surface that touches ice, using the ice-machine cleaner and sanitizer and the steps in the machine's manual. Pull the air filters, rinse off the dust, let them dry, and put them back. Tell the MOD about any mold, slime, or damage. The full machine service still follows the manufacturer's schedule (usually every 6 months)."
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "AM Checklist",
-   "after": "o-trash",
-   "item": {
-    "id": "o-door",
-    "t": "Front door Windexed",
-    "d": "Every opener, every morning, no exceptions.",
-    "pos": [
-     "AM Bar",
-     "AM Server",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "PM Checklist",
-   "after": "c-dining",
-   "item": {
-    "id": "c-slats",
-    "t": "Table slats cleaned; straw wrappers and debris removed",
-    "d": "Every table, every night.",
-    "pos": [
-     "PM Server",
-     "PM Bar",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "PM Checklist",
-   "after": "c-drink",
-   "item": {
-    "id": "c-ketchup",
-    "t": "Ketchup dispenser cleaned",
-    "pos": [
-     "PM Server",
-     "PM Bar",
-     "Food Runner"
-    ]
+    "r": 4,
+    "gap": 120
    }
   },
   {
    "op": "edit",
-   "id": "c-reset",
-   "from": {
-    "d": "Make sure enough of each product is stocked so the opener can complete opening tasks and stocking."
-   },
+   "id": "a-yardtrash",
+   "from": {},
    "to": {
-    "d": "Make sure enough of each product is stocked so the opener can complete opening tasks and stocking. Leave the bar clean enough to open with no re-cleaning in the morning."
+    "r": 4,
+    "gap": 120
    }
   },
   {
-   "op": "add",
-   "list": "daily",
-   "group": "PM Checklist",
-   "after": "c-rest",
-   "item": {
-    "id": "c-checkout",
-    "t": "Closing checkout chain completed",
-    "d": "Each server checks out with the closing server; the closing server checks out with the closing bartender; the closing bartender confirms every closing duty is done before the team is released.",
-    "pos": [
-     "PM Bar"
-    ]
+   "op": "edit",
+   "id": "o-rest",
+   "from": {},
+   "to": {
+    "r": 4,
+    "gap": 120
    }
   },
   {
-   "op": "add",
-   "list": "daily",
-   "group": "AM/PM Checklist",
-   "after": "c-wine",
-   "item": {
-    "id": "a-yardtrash",
-    "t": "Patio and yard trash picked up",
-    "d": "Walk the whole patio and yard.",
-    "pos": [
-     "AM Bar",
-     "PM Bar",
-     "AM Server",
-     "PM Server",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "AM/PM Checklist",
-   "after": "a-yardtrash",
-   "item": {
-    "id": "a-delivery",
-    "t": "Beer and liquor deliveries put away neatly as they arrive",
-    "d": "Bartender on duty. Nothing stacked on the kegs, nothing left on the floor or staged around the bar; liquor fully put up, not piled.",
-    "pos": [
-     "AM Bar",
-     "PM Bar"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "AM/PM Checklist",
-   "after": "a-delivery",
-   "item": {
-    "id": "a-diningwalk",
-    "t": "Dining room walk: no dirty tables, menus cleared, drinks refilled",
-    "d": "Keep doing it all shift. Bus and wipe every table as guests leave, clear menus once guests order, and offer refills so no guest refills their own drink.",
-    "pos": [
-     "AM Server",
-     "PM Server",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "AM Checklist",
-   "after": "o-tvs",
-   "item": {
-    "id": "o-heaters",
-    "t": "Pilot lights lit and outdoor heaters tested",
-    "d": "Light the pilot lights and test each outdoor heater. Keep the pilot lights on after testing.",
-    "pos": [
-     "AM Bar",
-     "AM Server",
-     "Food Runner"
-    ]
-   }
-  },
-  {
-   "op": "add",
-   "list": "daily",
-   "group": "PM Checklist",
-   "after": "c-tvs",
-   "item": {
-    "id": "c-heaters",
-    "t": "Heaters turned off completely, cooled, and put away",
-    "d": "Turn each heater off completely and let it cool. Return them all neatly to their spot next to the bar service door.",
-    "pos": [
-     "PM Bar",
-     "PM Server",
-     "Food Runner"
-    ],
-    "p": true,
-    "s": [
-     "Heaters lined up next to the bar service door"
-    ]
+   "op": "edit",
+   "id": "c-dining",
+   "from": {},
+   "to": {
+    "r": 4,
+    "gap": 120
    }
   }
  ]

@@ -191,6 +191,8 @@ body::before{background:var(--bar)}
 @media (max-width:520px){.rem li{flex-direction:column;gap:5px}.rem .k{min-width:0}}
 .tag{font-size:12.5px}
 .donebox .dg{font-size:12px}
+.reps{font-size:13.5px;color:var(--muted)}.reps .nextin{color:var(--warn)}.reps .nextin.ready{color:var(--done)}
+.task.partial .box{font-size:13px;color:var(--ink);border-color:var(--done)}
 .reset{min-height:42px}
 .donebox summary{min-height:44px;display:flex;align-items:center}
 .photo-link{font-size:14px;padding:6px 0}
@@ -291,6 +293,7 @@ body::before{background:var(--bar)}
     <button type="button" class="go" id="camSnap">Take photo</button>
     <button type="button" id="camRetake" hidden>Retake</button>
     <button type="button" class="go" id="camUse" hidden>Use photo</button>
+    <button type="button" id="camFinish" hidden>Finish</button>
   </div>
   <input type="file" id="camFile" accept="image/*" capture="environment" hidden>
 </div>
@@ -374,6 +377,13 @@ function codeLink(sec){const a=el('a','tag','Food Code '+sec);a.href=CODE_URL+'#
    Old days and weeks stay in the database as the record. */
 let fb=null,UID='',isManager=false,fbMsg='Connecting to the team list… try again in a moment.';
 const live={day:{},week:{},month:{}},unsub={};
+/* Repeat checks: a task can need several checks a day (r) with a minimum wait between them (gap, minutes).
+   Check 1 is saved as checks/{id}, check 2 as checks/{id}~2, and so on; the task is done when all are in. */
+let RQ={},PA={};   // id -> {r,gap}; id -> false when not every photo is required
+const needOf=id=>(RQ[id]&&RQ[id].r)||1, gapOf=id=>(RQ[id]&&RQ[id].gap)||0;
+function rounds(sc,id){const L=live[sc],out=[];if(L[id]){out.push(L[id]);for(let n=2;L[id+'~'+n];n++)out.push(L[id+'~'+n])}return out}
+const isDone=(sc,id)=>rounds(sc,id).length>=needOf(id);
+function fmtLeft(ms){const m=Math.max(1,Math.ceil(ms/60000)),h=Math.floor(m/60),mm=m%60;return h?h+'h '+mm+'m':mm+'m'}
 const scopes={
   day:{groups:()=>DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',reset:'dayReset',path:()=>['days',DAY]},
   week:{groups:()=>WEEKLY.filter(g=>g.day===DOW),mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]},
@@ -396,36 +406,52 @@ function build(sc){
     if(g.note)mount.appendChild(el('p','hint',g.note));
     const ul=el('ul','list');let gd=0;
     g.items.forEach(([id,title,desc,code])=>{
-      total++;const rec=data[id];if(rec)done++,gd++;
-      const li=el('li','task'+(rec?' done':''));
-      const box=el('button','box',rec?'✓':'');box.type='button';box.id='chk-'+id;
-      box.setAttribute('aria-pressed',String(!!rec));box.setAttribute('aria-label',(rec?'Uncheck ':'Check off ')+title);
+      total++;const rs=rounds(sc,id),n=rs.length,need=needOf(id),gap=gapOf(id),complete=n>=need;
+      const rec=complete?(n===1?rs[0]:{i:rs[n-1].i,t:rs[n-1].t,uid:rs[n-1].uid,photos:rs.flatMap(r=>r.photos||[]),slots:rs.flatMap(r=>(r.photos||[]).map((_,k)=>(r.slots||[])[k]||''))}):null;
+      if(complete)done++,gd++;
+      const li=el('li','task'+(complete?' done':n?' partial':''));
+      const box=el('button','box',complete?'✓':(n?n+'/'+need:''));box.type='button';box.id='chk-'+id;
+      box.setAttribute('aria-pressed',String(complete));box.setAttribute('aria-label',(complete?'Undo the last check of ':'Check off ')+title+(need>1?' ('+n+' of '+need+' checks)':''));
       const t=el('div','t');t.appendChild(el('span','ttl',title));
       if(desc)t.appendChild(el('span','d',desc));
       const slots=SLOTS[id];
-      if(slots)t.appendChild(el('span','d','Photos: '+slots.join(' + ')));
+      if(slots&&slots.length>1&&slots.some(Boolean))t.appendChild(el('span','d','Photos: '+slots.map((x,k)=>x||'Photo '+(k+1)).join(' + ')+(PA[id]===false?' (at least the first)':'')));
+      else if(slots&&slots.length>1)t.appendChild(el('span','d',slots.length+' photos'+(PA[id]===false?' (at least 1)':'')));
+      else if(slots&&slots[0])t.appendChild(el('span','d','Photo: '+slots[0]));
       const tags=el('div','tags');
       if(PHOTO.has(id))tags.appendChild(el('span','tag photo','Photo'));
       (code||[]).forEach(c=>tags.appendChild(codeLink(c)));
       if(tags.childNodes.length)t.appendChild(tags);
-      if(rec)t.appendChild(el('span','who',rec.i+' · '+timeFmt.format(new Date(rec.t))));
+      if(need>1){
+        if(n)t.appendChild(el('span','who',rs.map(r=>r.i+' '+timeFmt.format(new Date(r.t))).join(' · ')));
+        const st=el('span','reps');
+        if(complete)st.textContent='All '+need+' checks done';
+        else{st.append(n+' of '+need+' checks · ');const due=n&&gap?rs[n-1].t+gap*60000:0;
+          const nx=el('strong','nextin');nx.dataset.due=String(due);nx.textContent=due>Date.now()?'Next check in '+fmtLeft(due-Date.now()):'Next check: now';st.appendChild(nx)}
+        t.appendChild(st);
+        const last=rs[n-1];
+        if(n&&!complete&&(last.uid===UID||isManager)){const u=el('button','photo-link','Undo the last check');u.type='button';
+          u.addEventListener('click',()=>{if(!canEdit())return;fb.deleteDoc(fb.doc(checksCol(sc),n===1?id:id+'~'+n)).catch(saveErr)});t.appendChild(u)}
+      }else if(rec)t.appendChild(el('span','who',rec.i+' · '+timeFmt.format(new Date(rec.t))));
       if(rec&&rec.photos&&rec.photos.length){const v=el('button','photo-link',rec.photos.length>1?'View photos ('+rec.photos.length+')':'View photo');v.type='button';
         v.addEventListener('click',()=>viewPhotos(title,rec));t.appendChild(v)}
       box.addEventListener('click',()=>{
         if(!canEdit())return;
         if(!fb||!UID){toast(fbMsg);return}
-        const cur=live[sc][id],ref=fb.doc(checksCol(sc),id);
-        if(cur){
-          if(cur.uid!==UID&&!isManager){toast('Only '+cur.i+' or a manager can uncheck this.');return}
-          fb.deleteDoc(ref).catch(saveErr);
-        }else{
-          if(!NAME){openSetup();return}
-          if(PHOTO.has(id)){takePhotos(title,SLOTS[id]||[''],imgs=>saveCheck(sc,id,imgs));return}
-          saveCheck(sc,id,[]);
+        const rs=rounds(sc,id),n=rs.length,need=needOf(id);
+        if(n>=need){   /* done: undo the last check */
+          const last=rs[n-1];
+          if(last.uid!==UID&&!isManager){toast('Only '+last.i+' or a manager can '+(need>1?'undo the last check.':'uncheck this.'));return}
+          fb.deleteDoc(fb.doc(checksCol(sc),n===1?id:id+'~'+n)).catch(saveErr);return;
         }
+        if(n&&gapOf(id)){const due=rs[n-1].t+gapOf(id)*60000;if(Date.now()<due){toast('Next check in '+fmtLeft(due-Date.now())+'.');return}}
+        if(!NAME){openSetup();return}
+        const docId=n===0?id:id+'~'+(n+1);
+        if(PHOTO.has(id)){takePhotos(title,SLOTS[id]&&SLOTS[id].length?SLOTS[id]:[''],imgs=>saveCheck(sc,id,imgs,docId),PA[id]!==false);return}
+        saveCheck(sc,id,[],docId);
       });
       li.append(box,t);
-      if(rec){const gl=el('span','dg',g.role);t.insertBefore(gl,t.firstChild);doneRows.push([rec.t,li])}else ul.appendChild(li);
+      if(complete){const gl=el('span','dg',g.role);t.insertBefore(gl,t.firstChild);doneRows.push([rec.t,li])}else ul.appendChild(li);
     });
     gc.textContent=gd+'/'+g.items.length;
     if(ul.childNodes.length)mount.appendChild(ul);else mount.appendChild(el('p','alldone','✓ All done'));
@@ -444,7 +470,7 @@ function build(sc){
 const DAYNAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 function renderHome(){
   const dd=live.day;let tot=0,dn=0;const who=[];
-  DAILY.forEach(g=>g.items.forEach(([id])=>{tot++;const r=dd[id];if(r){dn++;if(who.indexOf(r.i)<0)who.push(r.i)}}));
+  DAILY.forEach(g=>g.items.forEach(([id])=>{tot++;if(isDone('day',id)){dn++;const r=dd[id];if(r&&who.indexOf(r.i)<0)who.push(r.i)}}));
   const closed=dayState()==='closed';
   $('sumDayPct').textContent=closed?'Closed':(tot?Math.round(dn/tot*100):0)+'%';
   const w=$('sumDayWho');w.replaceChildren();
@@ -452,13 +478,13 @@ function renderHome(){
   const g=WEEKLY.find(x=>x.day===DOW);const wd=live.week;
   $('sumWeekLbl').textContent='Weekly · '+DAYNAMES[DOW];
   if(closed)$('sumWeekPct').textContent='Closed';
-  else if(g){const n=g.items.filter(([id])=>wd[id]).length;$('sumWeekPct').textContent=Math.round(n/g.items.length*100)+'%'}
+  else if(g){const n=g.items.filter(([id])=>isDone('week',id)).length;$('sumWeekPct').textContent=Math.round(n/g.items.length*100)+'%'}
   else $('sumWeekPct').textContent='—';
   /* Monthly: tab and Home box only when there is a monthly list */
   const mItems=MONTHLY.flatMap(g=>g.items),hasM=mItems.length>0;
   $('tab-monthly').hidden=$('sumMonthly').hidden=!hasM;
   if(hasM){$('sumMonthLbl').textContent='Monthly · '+shift.toLocaleDateString(undefined,{timeZone:'UTC',month:'long'});
-    $('sumMonthPct').textContent=closed?'Closed':Math.round(mItems.filter(([id])=>live.month[id]).length/mItems.length*100)+'%'}
+    $('sumMonthPct').textContent=closed?'Closed':Math.round(mItems.filter(([id])=>isDone('month',id)).length/mItems.length*100)+'%'}
   renderToday(closed);renderTeam(closed);renderSoon();renderNotDone(closed);
 }
 /* ===== Home: reminders, team progress, coming up ===== */
@@ -478,8 +504,8 @@ function renderToday(closed){
   /* events today */
   ((BOARD&&BOARD.events)||[]).filter(e=>e.day===DAY).forEach(e=>L.push(remItem('Party','urgent',[el('strong',null,eventLine(e)+'. '),'Set up early and keep the bar stocked for it.'])));
   if(!closed){
-    const items=DAILY.flatMap(g=>g.items.map(([id])=>id)),open=items.filter(id=>!live.day[id]).length;
-    const amG=DAILY.find(g=>/^AM(?!\/)/i.test(g.role)),amLeft=amG?amG.items.filter(([id])=>!live.day[id]).length:0;
+    const items=DAILY.flatMap(g=>g.items.map(([id])=>id)),open=items.filter(id=>!isDone('day',id)).length;
+    const amG=DAILY.find(g=>/^AM(?!\/)/i.test(g.role)),amLeft=amG?amG.items.filter(([id])=>!isDone('day',id)).length:0;
     if(st==='countdown'||st==='locked'){if(open)L.push(remItem('Left open','miss',[open+' daily '+(open===1?'task was':'tasks were')+' not checked off. That’s on the PM bartender.']))}
     else if(amG&&localHour()>=16&&amLeft)L.push(remItem('AM tasks','miss',[amLeft+' AM '+(amLeft===1?'task is':'tasks are')+' still open. They’re the PM shift’s now.']));
     else if(open&&localHour()>=17)L.push(remItem('Open tasks',null,[open+' of '+items.length+' daily tasks still open. Bartender on duty: hand some out.']));
@@ -510,9 +536,9 @@ function renderTeam(closed){
 /* ===== Not finished: today's open tasks (daily, today's weekly, this month's monthly), filterable ===== */
 function openTasks(){
   const out=[],wg=WEEKLY.find(x=>x.day===DOW);
-  DAILY.forEach(g=>g.items.forEach(([id,t])=>{if(!live.day[id])out.push({sc:'day',tab:'daily',grp:g.role,id,t})}));
-  if(wg)wg.items.forEach(([id,t])=>{if(!live.week[id])out.push({sc:'week',tab:'weekly',grp:'Weekly · '+DAYNAMES[DOW],id,t})});
-  MONTHLY.forEach(g=>g.items.forEach(([id,t])=>{if(!live.month[id])out.push({sc:'month',tab:'monthly',grp:g.role,id,t})}));
+  DAILY.forEach(g=>g.items.forEach(([id,t])=>{if(!isDone('day',id))out.push({sc:'day',tab:'daily',grp:g.role,id,t})}));
+  if(wg)wg.items.forEach(([id,t])=>{if(!isDone('week',id))out.push({sc:'week',tab:'weekly',grp:'Weekly · '+DAYNAMES[DOW],id,t})});
+  MONTHLY.forEach(g=>g.items.forEach(([id,t])=>{if(!isDone('month',id))out.push({sc:'month',tab:'monthly',grp:g.role,id,t})}));
   return out;
 }
 function renderNotDone(closed){
@@ -526,7 +552,7 @@ function renderNotDone(closed){
     const h=el('h3','grp');h.appendChild(el('span',null,gn));h.appendChild(el('span','gc',groups[gn].length+' left'));f.appendChild(h);
     const box=el('div','nflist');groups[gn].forEach(x=>{const b=el('button','nfrow');b.type='button';const t=el('div','t');t.appendChild(el('span','ttl',x.t));
       const tags=el('div','tags');
-      if(PHOTO.has(x.id))tags.appendChild(el('span','tag photo','Photo'));if(tags.childNodes.length)t.appendChild(tags);
+      if(PHOTO.has(x.id))tags.appendChild(el('span','tag photo','Photo'));if(needOf(x.id)>1)tags.appendChild(el('span','tag',rounds(x.sc,x.id).length+' of '+needOf(x.id)+' checks'));if(tags.childNodes.length)t.appendChild(tags);
       b.append(t,el('span','go','›'));b.addEventListener('click',()=>goTask(x));box.appendChild(b)});f.appendChild(box);return f}));
 }
 function goTask(x){
@@ -554,7 +580,7 @@ Object.keys(scopes).forEach(sc=>{
     if(!canEdit())return;
     if(!fb||!UID){toast(fbMsg);return}
     const shown=new Set(scopes[sc].groups().flatMap(g=>g.items.map(([id])=>id)));
-    const all=Object.entries(live[sc]).filter(([id])=>shown.has(id)),mine=all.filter(([,r])=>isManager||r.uid===UID);
+    const all=Object.entries(live[sc]).filter(([id])=>shown.has(id.split('~')[0])),mine=all.filter(([,r])=>isManager||r.uid===UID);
     mine.forEach(([id])=>fb.deleteDoc(fb.doc(checksCol(sc),id)).catch(saveErr));
     toast(mine.length<all.length?'Cleared your checks. Only the person who checked a task or a manager can clear the rest.':'Cleared.');
   });
@@ -566,12 +592,13 @@ Object.keys(scopes).forEach(sc=>{
    Each photo is shrunk (800 px long side, JPEG) and saved in Firestore locations/{id}/photos/{auto id};
    the check stores the photo ids. Photos are kept as records like the checks. */
 const PHOTO_PX=800, PHOTO_Q=0.6;
-let camStream=null, camDone=null, camSlots=[], camIdx=0, camImgs=[], camShot='';
+let camStream=null, camDone=null, camSlots=[], camIdx=0, camImgs=[], camShot='', camAll=true;
 function camStop(){if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}$('camVideo').srcObject=null}
 function camClose(){camStop();$('cam').hidden=true;document.body.style.overflow='';camDone=null}
 function camState(preview){
   $('camVideo').hidden=preview;$('camShot').hidden=!preview;
   $('camSnap').hidden=preview;$('camRetake').hidden=!preview;$('camUse').hidden=!preview;
+  $('camFinish').hidden=preview||camAll||camIdx<1;
   const n=camSlots.length,slot=camSlots[camIdx];
   $('camStep').textContent=(slot?slot+' · ':'')+(n>1?'Photo '+(camIdx+1)+' of '+n:'');
   $('camMsg').textContent=preview?'Is the photo clear? Use it, or retake it.':'';
@@ -607,19 +634,23 @@ $('camUse').addEventListener('click',()=>{camImgs.push(camShot);camShot='';camId
   if(camIdx<camSlots.length){camLive();return}
   const done=camDone,imgs=camImgs;camClose();done&&done(imgs);});
 $('camClose').addEventListener('click',()=>{camClose();toast('No photo, so the task isn’t checked off.')});
-function takePhotos(title,slots,done){
+$('camFinish').addEventListener('click',()=>{const done=camDone,imgs=camImgs;camClose();done&&done(imgs)});
+function takePhotos(title,slots,done,all){
+  camAll=all!==false;
   camSlots=slots.length?slots:[''];camIdx=0;camImgs=[];camShot='';camDone=done;delete $('camSnap').dataset.fallback;
   $('camTitle').textContent=title;$('cam').hidden=false;document.body.style.overflow='hidden';camLive();
 }
-function saveCheck(sc,id,imgs){
+function saveCheck(sc,id,imgs,docId){
+  docId=docId||id;
   const b=fb.writeBatch(fb.db),ids=[],sheet=scopes[sc].path();
   imgs.forEach((img,i)=>{const r=fb.doc(fb.collection(fb.db,'locations',LOC,'photos'));ids.push(r.id);
     b.set(r,{task:id,period:sheet[0],sheet:sheet[1],day:DAY,slot:(SLOTS[id]||[])[i]||'',name:NAME,uid:UID,at:fb.serverTimestamp(),img})});
   if(!canEdit())return;
   const rec={task:id,name:NAME,uid:UID,day:DAY,at:fb.serverTimestamp(),tappedAt:fb.Timestamp.now()};
+  if(gapOf(id))rec.gap=gapOf(id);
   if(ids.length){rec.photos=ids;rec.slots=imgs.map((_,i)=>(SLOTS[id]||[])[i]||'')}
-  b.set(fb.doc(checksCol(sc),id),rec);
-  b.commit().then(()=>{if(ids.length)toast(ids.length>1?'Photos saved.':'Photo saved.')}).catch(saveErr);
+  b.set(fb.doc(checksCol(sc),docId),rec);
+  b.commit().then(()=>{if(ids.length)toast(ids.length>1?'Photos saved.':'Photo saved.');else if(needOf(id)>1)toast('Check saved.')}).catch(saveErr);
   if(ids.length&&!navigator.onLine)toast('Saved on this phone. Photos upload when you’re back online.');
 }
 function viewPhotos(title,rec){
@@ -648,9 +679,9 @@ function listen(sc){
 function applyTasks(x){
   if(!x||!Array.isArray(x.daily)||!Array.isArray(x.weekly))return;
   const conv=gs=>gs.map(g=>({role:g.role,note:g.note||undefined,day:typeof g.day==='number'?g.day:undefined,items:(g.items||[]).map(i=>[i.id,i.t,i.d||null,i.c&&i.c.length?i.c:undefined])}));
-  const sl={},ph=new Set(),po={},wh={};
-  [...x.daily,...x.weekly,...(x.monthly||[])].forEach(g=>(g.items||[]).forEach(i=>{if(i.p)ph.add(i.id);if(i.s&&i.s.length)sl[i.id]=i.s;if(i.pos&&i.pos.length)po[i.id]=i.pos;if(i.who&&i.who.length)wh[i.id]=i.who}));
-  DAILY=conv(x.daily);WEEKLY=conv(x.weekly);MONTHLY=conv(x.monthly||[]);SLOTS=sl;PHOTO=ph;POS=po;WHO=wh;build('day');build('week');build('month');
+  const sl={},ph=new Set(),po={},wh={},rq={},pa={};
+  [...x.daily,...x.weekly,...(x.monthly||[])].forEach(g=>(g.items||[]).forEach(i=>{if(i.p)ph.add(i.id);if((i.r||1)>1)rq[i.id]={r:Math.min(12,i.r),gap:Math.max(0,i.gap||0)};if(i.pa===false)pa[i.id]=false;if(i.s&&i.s.length)sl[i.id]=i.s;if(i.pos&&i.pos.length)po[i.id]=i.pos;if(i.who&&i.who.length)wh[i.id]=i.who}));
+  DAILY=conv(x.daily);WEEKLY=conv(x.weekly);MONTHLY=conv(x.monthly||[]);SLOTS=sl;PHOTO=ph;POS=po;WHO=wh;RQ=rq;PA=pa;build('day');build('week');build('month');
 }
 /* managers get a link to the manager page; staff never see it */
 function showMgr(){document.querySelectorAll('.mgr').forEach(a=>{a.hidden=!isManager})}
@@ -692,6 +723,7 @@ async function connect(){
 /* Closing countdown and lock (schedule in config.js). Checklists are hidden on closed days. */
 let lastState='',lockWritten='';
 function tick(){
+  document.querySelectorAll('.nextin').forEach(x=>{const due=+x.dataset.due,left=due-Date.now();x.textContent=left>0?'Next check in '+fmtLeft(left):'Next check: now';x.classList.toggle('ready',left<=0)});
   document.documentElement.style.setProperty('--hdr',document.querySelector('header').offsetHeight+'px');
   const st=dayState(),bar=$('lockbar'),now=Date.now();
   if(st==='countdown'){const left=Math.max(0,R.lockAt(DAY,C,tzOff)-now),m=Math.floor(left/60000),s=Math.floor(left/1000)%60;

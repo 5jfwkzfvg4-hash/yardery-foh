@@ -151,6 +151,14 @@ t('board is not rewritten when nothing changed', () => {
   const before = props.get('boardAt'); props.set('boardAt', '0'); at(ny(TUE, 23, 30)); vm.runInContext('tick()', ctx); ok(!props.get('boardError'), props.get('boardError'));
 });
 
+t('PDF: a repeat task is done only with all its checks, and lists each check', () => {
+  const R = require('../report.js'), off = () => -5 * 3600e3, base = Date.parse('2026-11-10T16:00:00Z');
+  const tasks = {daily: [{role: 'AM/PM', items: [{id: 'a-x', t: 'Sani water changed', r: 3, gap: 120}, {id: 'a-y', t: 'Yard trash', r: 2}]}], weekly: [], monthly: []};
+  const html = R.build({day: '2026-11-10', tasks, dayChecks: {'a-x': {name: 'Ana', at: base}, 'a-x~2': {name: 'Ben', at: base + 2 * 3600e3}, 'a-y': {name: 'Cy', at: base}, 'a-y~2': {name: 'Dee', at: base + 600e3}}, weekChecks: {}, photos: {}}, off);
+  ok(/NOT DONE<br>\(2 of 3\)/.test(html) && html.includes('Ana <span class="t">11:00 AM') && html.includes('Ben <span class="t">1:00 PM'), 'partial repeat task');
+  ok(/Done<\/td><td>Cy[\s\S]*Dee/.test(html) && html.includes('Daily: 1 of 2 tasks done'), 'completed repeat task');
+});
+
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? {executablePath: process.env.CHROMIUM_PATH} : {});
 const page = await browser.newPage(); await page.setContent(html);
 await page.pdf({path: 'tests/shots/report-sample.pdf', format: 'Letter', margin: {top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in'}, printBackground: true});

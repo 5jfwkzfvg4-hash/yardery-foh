@@ -123,7 +123,9 @@ details summary{min-height:40px;display:flex;align-items:center}
 .btn.icon{flex:none}
 @media (max-width:359px){.task .row{flex-wrap:wrap}}
 #arrangeHint{display:none}#arrangeBtn[aria-pressed="true"]+#arrangeHint{display:inline}
-.check{min-height:44px;cursor:pointer}.check input{width:24px;height:24px;margin:0;accent-color:var(--pine)}
+.check{min-height:44px;cursor:pointer}
+.fld{display:grid;gap:4px}.fld .lbl{font-size:12.5px}.phlabels{display:grid;gap:8px}.phlabels:empty{display:none}
+.task .row+.row{margin-top:-2px}.check input{width:24px;height:24px;margin:0;accent-color:var(--pine)}
 .arrangebar{top:var(--hdr,56px)}
 </style>
 </head>
@@ -186,12 +188,12 @@ if(C.locationName)$('place').textContent=C.locationName+' · Manager';
 function fromBuiltIn(){
   const PH=T.PHOTO||new Set(),SL=T.SLOTS||{};
   const conv=gs=>(gs||[]).map(g=>({role:g.role,note:g.note||'',day:typeof g.day==='number'?g.day:null,
-    items:g.items.map(([id,t,d,c])=>({id,t,d:d||'',c:c||[],p:PH.has(id),s:SL[id]||[],pos:[],who:[]}))}));
+    items:g.items.map(([id,t,d,c])=>({id,t,d:d||'',c:c||[],p:PH.has(id),s:SL[id]||[],pa:true,r:1,gap:0,pos:[],who:[]}))}));
   return {daily:conv(T.DAILY),weekly:conv(T.WEEKLY),monthly:conv(T.MONTHLY),positions:['AM Bar','PM Bar','AM Server','PM Server','Food Runner']};
 }
 function clean(x){
   const g=gs=>(gs||[]).map(g=>({role:String(g.role||''),note:String(g.note||''),day:typeof g.day==='number'?g.day:null,
-    items:(g.items||[]).map(i=>({id:String(i.id),t:String(i.t||''),d:String(i.d||''),c:(i.c||[]).map(String),p:!!i.p,s:(i.s||[]).map(String),pos:(i.pos||[]).map(String),who:(i.who||[]).map(String)}))}));
+    items:(g.items||[]).map(i=>({id:String(i.id),t:String(i.t||''),d:String(i.d||''),c:(i.c||[]).map(String),p:!!i.p,s:(i.s||[]).map(String),pa:i.pa!==false,r:Math.max(1,Math.min(12,Number(i.r)||1)),gap:Math.max(0,Math.min(720,Number(i.gap)||0)),pos:(i.pos||[]).map(String),who:(i.who||[]).map(String)}))}));
   return {daily:g(x.daily),weekly:g(x.weekly),monthly:g(x.monthly),positions:(x.positions||[]).map(String)};
 }
 let M=null, saved='', fb=null, UID='', NAME='', remote=null, fromSaved=false;
@@ -219,6 +221,7 @@ $('arrangeBtn').addEventListener('click',()=>{ARRANGE=!ARRANGE;$('arrangeBtn').s
   $('arrangeBtn').textContent=ARRANGE?'✓ Done arranging':'☰ Arrange order';
   document.querySelectorAll('.btn.add').forEach(b=>{b.hidden=ARRANGE});render()});
 /* Arrange mode: one compact line per task; drag the ☰ handle (finger or mouse) or use ↑ ↓ */
+function gapName(m){return m%60?(m>=60?Math.floor(m/60)+'½ hours':m+' minutes'):(m/60)+(m===60?' hour':' hours')}
 function renderArrange(list,mount){
   M[list].forEach((g,gi)=>{
     mount.appendChild(el('h3','ahead',(g.role||'(untitled)')+' · '+g.items.length));
@@ -287,7 +290,7 @@ function renderList(list){
     if(!g.items.length)ul.appendChild(el('li','task hint','No tasks yet.'));
     box.appendChild(ul);
     const add=el('button','btn add','+ Add task');add.type='button';
-    add.addEventListener('click',()=>{const it={id:newId(),t:'',d:'',c:[],p:false,s:[],pos:[],who:[]};g.items.push(it);rerender('#t-'+it.id)});
+    add.addEventListener('click',()=>{const it={id:newId(),t:'',d:'',c:[],p:false,s:[],pa:true,r:1,gap:0,pos:[],who:[]};g.items.push(it);rerender('#t-'+it.id)});
     box.appendChild(add);mount.appendChild(box);
   });
 }
@@ -298,14 +301,34 @@ function taskRow(list,gi,ii,g,it){
   t.addEventListener('input',()=>{if(/\n/.test(t.value))t.value=t.value.replace(/\s*\n\s*/g,' ');it.t=t.value;mark()});
   const d=el('textarea');d.rows=1;d.value=it.d;d.placeholder='Details (optional)';d.setAttribute('aria-label','Details');
   d.addEventListener('input',()=>{it.d=d.value;mark()});
-  const more=el('details');more.appendChild(el('summary',null,'Photo & Food Code'));
+  /* Photos, repeat checks and Food Code */
+  const nPh=()=>it.p?Math.max(1,it.s.length):0;
+  const sumTxt=()=>{const parts=[];const n=nPh();if(n)parts.push(n+(n>1?' photos':' photo'));if(it.r>1)parts.push(it.r+' checks'+(it.gap?' · '+gapName(it.gap)+' apart':''));
+    if(it.c.length)parts.push('Food Code');return parts.length?'Photos, checks & Food Code: '+parts.join(' · '):'Photos, checks & Food Code'};
+  const more=el('details');const msum=el('summary',null,sumTxt());more.appendChild(msum);
   const mg=el('div','more');
-  const pl=el('label','check');const pc=el('input');pc.type='checkbox';pc.checked=it.p;pc.addEventListener('change',()=>{it.p=pc.checked;mark()});pl.append(pc,el('span',null,'Photo required'));
-  const sl=el('input');sl.type='text';sl.value=it.s.join(', ');sl.placeholder='Photo spots, comma separated (optional)';sl.setAttribute('aria-label','Photo spots');
-  sl.addEventListener('input',()=>{it.s=sl.value.split(',').map(x=>x.trim()).filter(Boolean);mark()});
-  const cl=el('input');cl.type='text';cl.value=it.c.join(', ');cl.placeholder='Food Code sections, e.g. 4-602.11, 3-302.12';cl.setAttribute('aria-label','Food Code sections');
-  cl.addEventListener('input',()=>{it.c=cl.value.split(',').map(x=>x.trim()).filter(Boolean);mark()});
-  mg.append(pl,sl,cl);more.appendChild(mg);
+  const field=(label,ctrl)=>{const w=el('label','fld');w.append(el('span','lbl',label),ctrl);return w};
+  const phSel=el('select');for(let n=0;n<=6;n++)phSel.appendChild(new Option(n===0?'None':String(n),String(n)));phSel.value=String(nPh());
+  const phBox=el('div','phlabels');
+  const allBox=el('label','check');const allC=el('input');allC.type='checkbox';allC.checked=it.pa!==false;allBox.append(allC,el('span',null,'Every photo is required to finish the task'));
+  allC.addEventListener('change',()=>{it.pa=allC.checked;mark()});
+  const drawPh=()=>{const n=nPh();phBox.replaceChildren();
+    for(let i=0;i<n;i++){const inp=el('input');inp.type='text';inp.maxLength=60;inp.value=it.s[i]||'';inp.placeholder='Photo '+(i+1)+' must show… (optional)';inp.setAttribute('aria-label','Photo '+(i+1)+' label');
+      inp.addEventListener('input',()=>{while(it.s.length<n)it.s.push('');it.s[i]=inp.value;mark();msum.textContent=sumTxt()});phBox.appendChild(inp)}
+    allBox.hidden=n<2};
+  phSel.addEventListener('change',()=>{const n=+phSel.value;it.p=n>0;
+    if(n===0)it.s=[];else if(n===1)it.s=it.s.slice(0,1).filter(Boolean);else{it.s=it.s.slice(0,n);while(it.s.length<n)it.s.push('')}
+    drawPh();mark();msum.textContent=sumTxt();growAll()});
+  drawPh();
+  const rSel=el('select');for(let n=1;n<=12;n++)rSel.appendChild(new Option(n===1?'Once':n+' times',String(n)));rSel.value=String(it.r||1);
+  const gSel=el('select');[[0,'No wait'],[30,'30 minutes'],[60,'1 hour'],[90,'1½ hours'],[120,'2 hours'],[180,'3 hours'],[240,'4 hours']].forEach(([v,l])=>gSel.appendChild(new Option(l,String(v))));
+  if(![0,30,60,90,120,180,240].includes(it.gap))gSel.appendChild(new Option(gapName(it.gap),String(it.gap)));gSel.value=String(it.gap||0);
+  const gFld=field('Time between checks',gSel);gFld.hidden=(it.r||1)<2;
+  rSel.addEventListener('change',()=>{it.r=+rSel.value;if(it.r<2)it.gap=0,gSel.value='0';gFld.hidden=it.r<2;mark();msum.textContent=sumTxt()});
+  gSel.addEventListener('change',()=>{it.gap=+gSel.value;mark();msum.textContent=sumTxt()});
+  const cl=el('input');cl.type='text';cl.value=it.c.join(', ');cl.placeholder='e.g. 4-602.11, 3-302.12';cl.setAttribute('aria-label','Food Code sections');
+  cl.addEventListener('input',()=>{it.c=cl.value.split(',').map(x=>x.trim()).filter(Boolean);mark();msum.textContent=sumTxt()});
+  mg.append(field('Photos required',phSel),phBox,allBox,field('Checks needed each day',rSel),gFld,field('Food Code sections',cl));more.appendChild(mg);
   const ctl=el('div','row');
   ctl.append(iconBtn('↑','Move task up',()=>{g.items.splice(ii-1,0,g.items.splice(ii,1)[0]);rerender('#t-'+it.id)},ii===0),
              iconBtn('↓','Move task down',()=>{g.items.splice(ii+1,0,g.items.splice(ii,1)[0]);rerender('#t-'+it.id)},ii===g.items.length-1));
@@ -314,10 +337,17 @@ function taskRow(list,gi,ii,g,it){
   allGroups().forEach(x=>{if(!(x.list===list&&x.i===gi))mv.appendChild(new Option(groupName(x.list,x.g),x.list+':'+x.i))});
   mv.addEventListener('change',()=>{if(!mv.value)return;const [l,i]=mv.value.split(':');const dest=M[l][+i];
     g.items.splice(ii,1);dest.items.push(it);render();mark();toast('Moved to '+groupName(l,dest)+'.')});
+  /* Copy to: the same task on another list too (its own checks there) */
+  const cp=el('select','move');cp.setAttribute('aria-label','Copy to another section');
+  cp.appendChild(new Option('Copy to…',''));
+  allGroups().forEach(x=>{if(!(x.list===list&&x.i===gi))cp.appendChild(new Option(groupName(x.list,x.g),x.list+':'+x.i))});
+  cp.addEventListener('change',()=>{if(!cp.value)return;const [l,i]=cp.value.split(':');const dest=M[l][+i];
+    const copy=JSON.parse(JSON.stringify(it));copy.id=newId();dest.items.push(copy);cp.value='';mark();toast('Copied to '+groupName(l,dest)+'. Tap Save to publish.')});
   const rm=el('button','btn danger','Remove');rm.type='button';
   armed(rm,'Tap again to remove',()=>{g.items.splice(ii,1);rerender();toast('Task removed. Tap Save to publish.')});
   ctl.append(mv,rm);
-  li.append(t,d,more,ctl);return li;
+  const ctl2=el('div','row');ctl2.appendChild(cp);
+  li.append(t,d,more,ctl,ctl2);return li;
 }
 /* text boxes grow to fit their text */
 function grow(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px'}
@@ -384,6 +414,10 @@ function describe(o){
   if('t' in o.to)parts.push('“'+o.from.t+'” → “'+o.to.t+'”');
   if('d' in o.to)parts.push('details → “'+o.to.d+'”');
   if('s' in o.to)parts.push('photo spots → '+o.to.s.join(', '));
+  if('r' in o.to)parts.push(o.to.r>1?o.to.r+' checks a day':'checked once a day');
+  if('gap' in o.to&&o.to.gap)parts.push(gapName(o.to.gap)+' between checks');
+  if('p' in o.to)parts.push(o.to.p?'photo required':'no photo');
+  if('pa' in o.to)parts.push(o.to.pa?'every photo required':'only the first photo required');
   return ('t' in o.to?'':it.t+': ')+parts.join(' · ');
 }
 function showProposal(){
