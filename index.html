@@ -124,6 +124,17 @@ a.tag{color:var(--pine);border-color:currentColor}
 .soon{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .soon li{font-size:14px}.soon .dd{font-weight:700;display:block}.soon .it{display:block;color:var(--ink)}.soon .tent{color:var(--muted)}
 .standards{margin-top:0}
+.nfbtn{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding:12px 16px;border-radius:14px;border:2px solid var(--warn);background:var(--panel);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.nfbtn.clear{border-color:var(--done)}
+.nfl{font:700 16px var(--display);color:var(--warn)}.nfbtn.clear .nfl{color:var(--done)}
+.nfc{flex:1;font-size:14px;color:var(--muted)}.nfa{font:700 22px/1 var(--body);color:var(--muted)}
+.nffil{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
+.nffil button{font:600 13px var(--body);padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+.nffil button[aria-pressed="true"]{background:var(--pine);border-color:var(--pine);color:var(--pine-ink)}
+.nflist{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.nfrow{display:flex;gap:10px;align-items:flex-start;width:100%;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.nfrow:first-child{border-top:0}.nfrow .t{flex:1}.nfrow .go{color:var(--muted);font-weight:700}
+.task.flash{outline:3px solid var(--amber);outline-offset:-3px}
 .standards ul{margin:8px 0 0;padding-left:20px}.standards li{margin:4px 0}.std-src{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
 .lockbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hdr,98px) + 6px);z-index:4;margin:0 0 12px;padding:10px 14px;border-radius:12px;font:600 14.5px/1.35 var(--body);background:var(--panel);border:1px solid var(--line);color:var(--ink)}
 .lockbar.soon{background:var(--amber);border-color:var(--amber);color:#1E241A}
@@ -189,12 +200,20 @@ a.tag{color:var(--pine);border-color:currentColor}
         <span class="pct" id="sumMonthPct">0%</span>
       </button>
     </div>
+    <button type="button" class="nfbtn" id="nfBtn"><span class="nfl">Not finished</span><span class="nfc" id="nfCount"></span><span class="nfa" aria-hidden="true">›</span></button>
     <div class="card" id="teamCard" style="margin-top:14px"><h3>Team today</h3><ul class="team" id="team"></ul></div>
     <div class="note duty" id="duty"></div>
     <div class="card" id="todayCard"><h2 id="todayTitle">Today</h2><ul class="rem" id="reminders"></ul></div>
     <div class="card" id="soonCard" hidden><h3>Coming up: next 7 days</h3><ul class="soon" id="soonList"></ul></div>
     <div class="note standards" id="standards" hidden><strong id="stdTitle"></strong><ul id="stdList"></ul><p class="std-src" id="stdSrc"></p></div>
     <p class="mgr-home"><a class="linkbtn mgr" href="manage.html" hidden>Manager page: edit and assign tasks</a></p>
+  </section>
+
+  <section id="notdone" hidden>
+    <h2>Not finished</h2>
+    <p class="sub" id="nfSub"></p>
+    <div class="nffil" id="nfFilters" role="group" aria-label="Show"></div>
+    <div id="nfList"></div>
   </section>
 
   <section id="daily" hidden>
@@ -396,7 +415,7 @@ function renderHome(){
   $('tab-monthly').hidden=$('sumMonthly').hidden=!hasM;
   if(hasM){$('sumMonthLbl').textContent='Monthly · '+shift.toLocaleDateString(undefined,{timeZone:'UTC',month:'long'});
     $('sumMonthPct').textContent=closed?'Closed':Math.round(mItems.filter(([id])=>live.month[id]).length/mItems.length*100)+'%'}
-  renderToday(closed);renderTeam(closed);renderSoon();
+  renderToday(closed);renderTeam(closed);renderSoon();renderNotDone(closed);
 }
 /* ===== Home: reminders, team progress, coming up ===== */
 const REM=window.FOH_REMINDERS||{};
@@ -443,6 +462,38 @@ function renderTeam(closed){
   $('teamCard').hidden=closed;
   $('team').replaceChildren(...(rows.length?rows.map(([n,c])=>{const li=el('li'),pc=total?Math.round(c/total*100):0,b=el('span','tb'),i=el('i');i.style.width=Math.min(100,pc)+'%';b.appendChild(i);
     li.append(el('span','nm',n),b,el('span','pc',pc+'% · '+c+(c===1?' task':' tasks')));return li}):[el('li','meta','No one has checked anything off yet today.')]));
+}
+/* ===== Not finished: today's open tasks (daily, today's weekly, this month's monthly), filterable ===== */
+let nfFilter='all';try{nfFilter=localStorage.getItem('foh-nf')||'all'}catch(e){}
+function openTasks(){
+  const out=[],wg=WEEKLY.find(x=>x.day===DOW);
+  DAILY.forEach(g=>g.items.forEach(([id,t])=>{if(!live.day[id])out.push({sc:'day',tab:'daily',grp:g.role,id,t})}));
+  if(wg)wg.items.forEach(([id,t])=>{if(!live.week[id])out.push({sc:'week',tab:'weekly',grp:'Weekly · '+DAYNAMES[DOW],id,t})});
+  MONTHLY.forEach(g=>g.items.forEach(([id,t])=>{if(!live.month[id])out.push({sc:'month',tab:'monthly',grp:g.role,id,t})}));
+  return out;
+}
+function renderNotDone(closed){
+  const all=closed?[]:openTasks(),ph=all.filter(x=>PHOTO.has(x.id)).length,today=all.filter(x=>x.sc!=='month').length;
+  $('nfBtn').hidden=closed;$('nfBtn').classList.toggle('clear',!today);
+  $('nfCount').textContent=today?today+(today===1?' task':' tasks')+' left today'+(ph?' · '+ph+' need photos':''):'Everything for today is done';
+  const pos=[...new Set(Object.values(POS).flat())],opts=[['all','All'],['mine','Mine']].concat(pos.map(p=>[p,p]));
+  if(!opts.some(o=>o[0]===nfFilter))nfFilter='all';
+  $('nfFilters').replaceChildren(...opts.map(([k,l])=>{const b=el('button',null,l);b.type='button';b.setAttribute('aria-pressed',String(k===nfFilter));
+    b.addEventListener('click',()=>{nfFilter=k;try{localStorage.setItem('foh-nf',k)}catch(e){}renderNotDone(dayState()==='closed')});return b}));
+  const list=all.filter(x=>nfFilter==='all'||(nfFilter==='mine'?(WHO[x.id]||[]).includes(NAME):(POS[x.id]||[]).includes(nfFilter)));
+  $('nfSub').textContent=closed?'We’re closed today.':(list.length?list.length+' open · tap one to go to it. Everything must be done before you close out.':'Nothing left here.');
+  const groups={};list.forEach(x=>{(groups[x.grp]=groups[x.grp]||[]).push(x)});
+  $('nfList').replaceChildren(...Object.keys(groups).map(gn=>{const f=document.createDocumentFragment();
+    const h=el('h3','grp');h.appendChild(el('span',null,gn));h.appendChild(el('span','gc',groups[gn].length+' left'));f.appendChild(h);
+    const box=el('div','nflist');groups[gn].forEach(x=>{const b=el('button','nfrow');b.type='button';const t=el('div','t');t.appendChild(el('span','ttl',x.t));
+      const tags=el('div','tags');(POS[x.id]||[]).forEach(p=>tags.appendChild(el('span','tag pos',p)));(WHO[x.id]||[]).forEach(p=>tags.appendChild(el('span','tag who-tag','For '+p)));
+      if(PHOTO.has(x.id))tags.appendChild(el('span','tag photo','Photo'));if(tags.childNodes.length)t.appendChild(tags);
+      b.append(t,el('span','go','›'));b.addEventListener('click',()=>goTask(x));box.appendChild(b)});f.appendChild(box);return f}));
+}
+function goTask(x){
+  show(x.tab);try{history.replaceState(null,'','#'+x.tab)}catch(e){}navSet({tab:x.tab,y:0,day:DAY});
+  const b=$('chk-'+x.id);if(!b)return;const li=b.closest('.task');
+  requestAnimationFrame(()=>{li.scrollIntoView({block:'center'});b.focus({preventScroll:true});li.classList.add('flash');setTimeout(()=>li.classList.remove('flash'),1600)});
 }
 function eventLine(e){return [e.time,e.what||'Party',e.guests?e.guests+' guests':'',e.pkg].filter(Boolean).join(' · ')+(e.tentative?' (tentative)':'')}
 function renderSoon(){
@@ -656,6 +707,7 @@ let navT;window.addEventListener('scroll',()=>{clearTimeout(navT);navT=setTimeou
 tabs.concat([...document.querySelectorAll('.sum')]).forEach(b=>b.addEventListener('click',()=>navSet({tab:curTab(),y:0,day:DAY})));
 document.addEventListener('visibilitychange',()=>{if(document.hidden)navSet({tab:curTab(),y:Math.round(window.scrollY),day:DAY});else{const n=navGet();if(n.day!==DAY||Date.now()-(n.homeAt||0)>=NAV_MS)landing()}});
 landing();window.addEventListener('hashchange',route);
+$('nfBtn').addEventListener('click',()=>{show('notdone');try{history.replaceState(null,'','#notdone')}catch(e){}});
 tick();connect();
 </script>
 

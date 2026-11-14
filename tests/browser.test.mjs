@@ -180,6 +180,19 @@ await t('Opening the site: Home first; within 2 hours it resumes where you left 
   ok(await p.isVisible('#home'), 'did not go Home after 2 hours');
   await ctx.close();
 });
+await t('Not finished: count on Home, list by section, position filter, tap jumps to the task', async () => {
+  await pa.click('#tab-home'); const c = await pa.textContent('#nfCount'); ok(/\d+ tasks left today/.test(c), c);
+  await pa.click('#nfBtn'); ok(await pa.isVisible('#notdone'), 'not open'); await pa.screenshot({path: 'tests/shots/phone-notfinished.png'});
+  const n = await pa.locator('#nfList .nfrow').count(); ok(n > 10, 'rows ' + n);
+  ok(!(await pa.textContent('#nfList')).includes('Entire bar top and display shelves wiped down'), 'shows a finished task');
+  const filters = await pa.locator('#nfFilters button').allTextContents(); ok(filters.includes('Mine'), filters.join());
+  await pa.click('#nfFilters button:text-is("Mine")'); const mine = await pa.locator('#nfList .nfrow').count(); ok(mine < n, 'mine did not filter');
+  await pa.click('#nfFilters button:text-is("All")');
+  const first = await pa.locator('#nfList .nfrow .ttl').first().textContent(); await pa.locator('#nfList .nfrow').first().click();
+  ok(await pa.isVisible('#daily'), 'did not go to Daily'); await pa.waitForSelector('.task.flash');
+  ok((await pa.textContent('.task.flash .ttl')) === first, 'wrong task');
+  await pa.click('#tab-home');
+});
 await t('a manager can uncheck anyone', async () => {
   const H = {Authorization: 'Bearer owner', 'content-type': 'application/json'};
   const base = 'http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/';

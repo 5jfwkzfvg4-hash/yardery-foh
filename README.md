@@ -13,6 +13,8 @@ through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff 
   4 PM) and "left open" (at close), the tasks most often missed over the last 7 open days, one Food Code tip a day
   (`reminders.js` → `health`, rotates by date) and one service standard a day (`tasks.js` → `STANDARDS`).
 - **Progress:** Daily / Weekly / Monthly boxes, and **Team today**: each person's share of today's tasks.
+- **Not finished:** button under Progress with today's open tasks and photos; opens a list by section with filters
+  (All, Mine = tasks assigned to me by name, or a position). Tapping a task jumps to it on its checklist.
 - **Coming up:** parties, deliveries and holidays for the next 7 days.
 - Deliveries, parties, holidays and often-missed come from the nightly script (`locations/{id}/board/current`); the
   script's sign-in must be listed in `firestore.rules` → `scriptIds()`.
