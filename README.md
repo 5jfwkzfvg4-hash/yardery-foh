@@ -12,6 +12,7 @@ through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff 
 - **Today:** beer/liquor deliveries today (bartender puts the order away), parties today, live "AM tasks left" (after
   4 PM) and "left open" (at close), the tasks most often missed over the last 7 open days, one Food Code tip a day
   (`reminders.js` → `health`, rotates by date) and one service standard a day (`tasks.js` → `STANDARDS`).
+- **Weekly tab** shows only today's weekly section.
 - **Progress:** Daily / Weekly / Monthly boxes, and **Team today**: each person's share of today's tasks.
 - **Not finished:** button under Progress with today's open tasks and photos; opens a list by section.
   Tapping a task jumps to it on its checklist.

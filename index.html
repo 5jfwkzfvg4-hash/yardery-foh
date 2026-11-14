@@ -268,7 +268,7 @@ body::before{background:var(--bar)}
     <div class="closedmsg" id="weekClosed" hidden></div>
     <div id="weeklyLists"></div>
     <div class="note"><strong>Every day:</strong> Sweep and mop behind all bars. Mats are pulled and cleaned underneath. Those are on the Daily tab.</div>
-    <button type="button" class="reset" id="weekReset">Clear this week’s checks</button>
+    <button type="button" class="reset" id="weekReset">Clear today’s weekly checks</button>
   </section>
 
   <section id="monthly" hidden>
@@ -345,7 +345,7 @@ function setDates(){
   shift=s;DAY=d;DOW=s.getUTCDay();mon=new Date(s);mon.setUTCDate(s.getUTCDate()-((DOW+6)%7));WEEK=key(mon);MONTH=DAY.slice(0,8)+'01';
   $('dayDate').textContent=shift.toLocaleDateString(undefined,{timeZone:'UTC',weekday:'long',month:'long',day:'numeric'})+' · tap the box to check a task off';
   $('monthDate').textContent=shift.toLocaleDateString(undefined,{timeZone:'UTC',month:'long',year:'numeric'})+' · any day this month · starts fresh on the 1st';
-  $('weekDate').textContent='Week of '+mon.toLocaleDateString(undefined,{timeZone:'UTC',month:'long',day:'numeric'})+' · starts fresh each Monday';
+  $('weekDate').textContent=shift.toLocaleDateString(undefined,{timeZone:'UTC',weekday:'long',month:'long',day:'numeric'})+' · today’s weekly tasks only';
   return true;
 }
 setDates();
@@ -376,7 +376,7 @@ let fb=null,UID='',isManager=false,fbMsg='Connecting to the team list… try aga
 const live={day:{},week:{},month:{}},unsub={};
 const scopes={
   day:{groups:()=>DAILY,mount:'dailyLists',bar:'dayBar',count:'dayCount',reset:'dayReset',path:()=>['days',DAY]},
-  week:{groups:()=>WEEKLY,mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]},
+  week:{groups:()=>WEEKLY.filter(g=>g.day===DOW),mount:'weeklyLists',bar:'weekBar',count:'weekCount',reset:'weekReset',path:()=>['weeks',WEEK]},
   month:{groups:()=>MONTHLY,mount:'monthlyLists',bar:'monthBar',count:'monthCount',reset:'monthReset',path:()=>['months',MONTH]}
 };
 const checksCol=sc=>fb.collection(fb.db,'locations',LOC,...scopes[sc].path(),'checks');
@@ -392,7 +392,6 @@ function build(sc){
   let total=0,done=0;const doneRows=[];
   S.groups().forEach(g=>{
     const h=el('h3','grp');h.appendChild(el('span',null,g.role));
-    if(g.day===DOW&&sc==='week')h.appendChild(el('span','tag today','Today'));
     const gc=el('span','gc');h.appendChild(gc);mount.appendChild(h);
     if(g.note)mount.appendChild(el('p','hint',g.note));
     const ul=el('ul','list');let gd=0;
@@ -433,7 +432,7 @@ function build(sc){
   });
   if(doneRows.length){
     const det=el('details','donebox');det.open=wasOpen;
-    det.appendChild(el('summary',null,({day:'Done today',week:'Done this week',month:'Done this month'}[sc])+' ('+doneRows.length+')'));
+    det.appendChild(el('summary',null,({day:'Done today',week:'Done today',month:'Done this month'}[sc])+' ('+doneRows.length+')'));
     const dl=el('ul','list');doneRows.sort((a,b)=>b[0]-a[0]).forEach(([,li])=>dl.appendChild(li));det.appendChild(dl);mount.appendChild(det);
   }
   $(S.bar).style.width=(total?done/total*100:0)+'%';
@@ -554,7 +553,8 @@ Object.keys(scopes).forEach(sc=>{
     clearTimeout(armT);b.classList.remove('arm');b.textContent=b.dataset.t;
     if(!canEdit())return;
     if(!fb||!UID){toast(fbMsg);return}
-    const all=Object.entries(live[sc]),mine=all.filter(([,r])=>isManager||r.uid===UID);
+    const shown=new Set(scopes[sc].groups().flatMap(g=>g.items.map(([id])=>id)));
+    const all=Object.entries(live[sc]).filter(([id])=>shown.has(id)),mine=all.filter(([,r])=>isManager||r.uid===UID);
     mine.forEach(([id])=>fb.deleteDoc(fb.doc(checksCol(sc),id)).catch(saveErr));
     toast(mine.length<all.length?'Cleared your checks. Only the person who checked a task or a manager can clear the rest.':'Cleared.');
   });

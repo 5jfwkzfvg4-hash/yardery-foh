@@ -99,10 +99,13 @@ await t('the person who checked it can uncheck it; desktop updates live', async 
 await t('desktop check shows on phone live', async () => {
   await pb.click('#chk-o-bartop'); await waitPressed(pa, 'o-bartop', 'true');
 });
-await t("weekly: today's group is tagged Today and Home shows 'Weekly · <day>' for the team", async () => {
+await t("weekly: only today's (Tuesday's) tasks show, and Home shows 'Weekly · Tuesday' for the team", async () => {
   await pa.click('#tab-weekly');
-  const first = await pa.evaluate(() => { const h = [...document.querySelectorAll('#weeklyLists .grp')].find(x => x.querySelector('.today')); return h && h.nextElementSibling.querySelector('.box, ul .box')?.id || h?.nextElementSibling?.nextElementSibling?.querySelector('.box')?.id; });
-  ok(first, 'no Today group'); await pa.click('#' + first);
+  const groups = await pa.locator('#weeklyLists .grp').allTextContents();
+  ok(groups.length === 1 && groups[0].startsWith('Tuesday'), 'weekly sections: ' + groups.join(' | '));
+  ok((await pa.textContent('#weekDate')).startsWith('Tuesday'), await pa.textContent('#weekDate'));
+  const first = await pa.evaluate(() => document.querySelector('#weeklyLists ul.list .box').id);
+  ok(first, 'no task'); await pa.click('#' + first);
   await pb.click('#tab-home');
   await pb.waitForFunction(() => /^Weekly · \w+day$/.test(document.getElementById('sumWeekLbl').textContent) && document.getElementById('sumWeekPct').textContent !== '0%', null, {timeout: 5000});
 });
@@ -356,8 +359,8 @@ async function dayAt(iso) {
 }
 await t('4:59 AM New York Wednesday still counts as Tuesday', async () => { const r = await dayAt('2026-11-04T09:59:00Z'); ok(r[0].startsWith('Tuesday, November 3') && r[2] === 'Weekly · Tuesday', r); });
 await t('5:00 AM New York is the new day', async () => { const r = await dayAt('2026-11-04T10:00:00Z'); ok(r[0].startsWith('Wednesday, November 4'), r); });
-await t('Monday 3 AM is still last week (Sunday close)', async () => { const r = await dayAt('2026-11-09T08:00:00Z'); ok(r[0].startsWith('Sunday') && r[1].startsWith('Week of November 2'), r); });
-await t('Monday 6 AM starts a new week', async () => { const r = await dayAt('2026-11-09T11:00:00Z'); ok(r[1].startsWith('Week of November 9'), r); });
+await t('Monday 3 AM is still Sunday (Sunday close): Weekly shows Sunday', async () => { const r = await dayAt('2026-11-09T08:00:00Z'); ok(r[0].startsWith('Sunday') && r[1].startsWith('Sunday') && r[2] === 'Weekly · Sunday', r); });
+await t('Wednesday: Weekly shows Wednesday only', async () => { const r = await dayAt('2026-11-11T15:00:00Z'); ok(r[1].startsWith('Wednesday') && r[2] === 'Weekly · Wednesday', r); });
 await t('works in summer time (EDT) too', async () => { const r = await dayAt('2026-07-07T08:30:00Z'); ok(r[0].startsWith('Monday, July 6'), r); });
 await t('without Firebase settings the page says so instead of failing silently', async () => { const r = await dayAt('2026-11-04T15:00:00Z'); ok(r[3].includes('Not connected'), r[3]); });
 
