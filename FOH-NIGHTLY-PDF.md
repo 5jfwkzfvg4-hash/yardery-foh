@@ -26,6 +26,12 @@ The date is always the business day: after midnight it's still the day the check
    to Claude; once it's added to the rules (and you publish them), deliveries and parties appear on the Home page.
    The PDF and email work right away either way.
 
+## If the log says "does not have permission … calendar"
+1. In the script, click the **gear (Project Settings)** and tick **Show "appsscript.json" manifest file in editor**.
+2. Back in the editor (**< >** icon), open **appsscript.json**, select all, and paste over it everything from
+   **https://raw.githubusercontent.com/5jfwkzfvg4-hash/yardery-foh/main/apps-script/appsscript.json** → **Save**.
+3. Choose **setup** → **Run** → **Review permissions** → **Allow** (the list now includes your calendars).
+
 ## Check it (optional, recommended once)
 Choose **testNow** in the function menu → **Run**. The log shows a link to a "(test)" PDF of today's checklist
 so far. Open it and check the photos show. Delete the test PDF afterwards. Nothing is locked or emailed.
