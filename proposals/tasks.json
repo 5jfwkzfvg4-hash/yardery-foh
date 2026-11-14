@@ -1,6 +1,6 @@
 {
- "id": "2026-11-14-sop-additions",
- "note": "Bar-guide additions (Nov 13) and items from the FOH Standards SOP and memos (Nov 14).",
+ "id": "2026-11-14-sop-additions-2",
+ "note": "Bar-guide additions (Nov 13), SOP/memo items and outdoor heater tasks (Nov 14).",
  "ops": [
   {
    "op": "add",
@@ -263,6 +263,38 @@
     "d": "Keep doing it all shift. Bus and wipe every table as guests leave, clear menus once guests order, and offer refills so no guest refills their own drink.",
     "pos": [
      "AM Server",
+     "PM Server",
+     "Food Runner"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "AM Checklist",
+   "after": "o-tvs",
+   "item": {
+    "id": "o-heaters",
+    "t": "Pilot lights lit and outdoor heaters tested",
+    "d": "Light the pilot lights and test each outdoor heater. Keep the pilot lights on after testing.",
+    "pos": [
+     "AM Bar",
+     "AM Server",
+     "Food Runner"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "PM Checklist",
+   "after": "c-tvs",
+   "item": {
+    "id": "c-heaters",
+    "t": "Heaters turned off completely, cooled, and put away",
+    "d": "Turn each heater off completely and let it cool. Return them all neatly to their spot next to the bar service door.",
+    "pos": [
+     "PM Bar",
      "PM Server",
      "Food Runner"
     ]
