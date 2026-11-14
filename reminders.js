@@ -9,6 +9,7 @@ window.FOH_REMINDERS = {
   /* Standing reminders: shown every day in the Today card, in this order, until removed.
      tag: the label on the left; style: 'urgent' (amber), 'miss' (red) or '' (plain). */
   notes: [
+    {tag: 'Close out', style: 'urgent', text: 'All of your tasks and photos must be done before you can close out your shift.'},
     {tag: 'Reminder', style: 'urgent', text: 'Change the sanitizer water and rag every 2 hours.'},
     {tag: 'Bathrooms', style: 'miss', text: 'Bathrooms have not been kept up. Clean them thoroughly every night, and check, touch up and restock them throughout the day.'}
   ],

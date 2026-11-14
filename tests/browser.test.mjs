@@ -60,7 +60,7 @@ await t('Home: duty reminder, health code of the day with Food Code link, standa
   ok((await pa.textContent('#duty')).includes('Bartender on duty'), 'duty');
   const rem = await pa.textContent('#reminders'); ok(rem.includes('Health code') && rem.includes('Standard'), rem);
   ok((await pa.getAttribute('#reminders a', 'href')).includes('Food-Code'), 'no code link');
-  ok(rem.includes('Change the sanitizer water and rag every 2 hours') && rem.includes('Bathrooms have not been kept up'), 'standing reminders missing');
+  ok(rem.includes('Change the sanitizer water and rag every 2 hours') && rem.includes('before you can close out your shift') && rem.includes('Bathrooms have not been kept up'), 'standing reminders missing');
 });
 await t('Home shows the service standards card', async () => {
   await pa.click('#tab-home'); const txt = await pa.textContent('#standards');
