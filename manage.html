@@ -48,6 +48,15 @@ h2{font:700 22px/1.2 var(--display);margin:0;color:var(--pine)}
 .gate code{display:block;margin:10px 0;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;font:600 15px ui-monospace,Menlo,Consolas,monospace;word-break:break-all}
 .grp{margin-top:26px}
 .ghead{display:flex;gap:8px;align-items:center}
+.arrangebar{position:sticky;top:calc(env(safe-area-inset-top,0px) + 92px);z-index:4;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0 0;padding:8px 0;background:var(--bg)}
+.arrangebar .btn[aria-pressed="true"]{background:var(--pine);border-color:var(--pine);color:var(--pine-ink)}
+.arow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--line);background:var(--panel)}
+.arow:first-child{border-top:0}
+.arow .ttl{flex:1;min-width:0;font-weight:600;font-size:14.5px}
+.handle{flex:none;width:40px;height:40px;border:0;border-radius:10px;background:var(--bg);color:var(--muted);font:700 18px var(--body);cursor:grab;touch-action:none}
+.arow.dragging{position:relative;z-index:3;box-shadow:0 8px 22px rgba(0,0,0,.18);outline:2px solid var(--amber)}
+.arow.dragging .handle{cursor:grabbing;background:var(--amber);color:#1E241A}
+.ahead{font:700 17px/1.25 var(--display);margin:22px 0 8px}
 .ghead input{flex:1;min-width:0;font:700 17px/1.25 var(--display);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .gnote{margin:6px 0 8px}
 input[type=text],textarea,select{font:15px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:100%}
@@ -95,7 +104,6 @@ details .more{display:grid;gap:8px;margin-top:8px}
       <button role="tab" data-tab="daily" aria-selected="true">Daily</button>
       <button role="tab" data-tab="weekly" aria-selected="false">Weekly</button>
       <button role="tab" data-tab="monthly" aria-selected="false">Monthly</button>
-      <button role="tab" data-tab="positions" aria-selected="false">Team</button>
     </nav>
   </div>
 </header>
@@ -115,17 +123,12 @@ details .more{display:grid;gap:8px;margin-top:8px}
       <div class="row"><button type="button" class="btn primary" id="propAdd">Add these</button><button type="button" class="btn" id="propLater">Not now</button></div>
       <p class="hint">This puts them in the editor. Nothing changes for staff until you tap Save.</p>
     </section>
-    <section id="daily"><h2>Daily</h2><p class="sub">Change wording, move tasks, assign positions. Changes reach every phone when you tap Save.</p><div id="dailyEd"></div>
+    <div class="arrangebar"><button type="button" class="btn" id="arrangeBtn" aria-pressed="false">☰ Arrange order</button><span class="hint" id="arrangeHint">Drag tasks into a new order, one section at a time.</span></div>
+    <section id="daily"><h2>Daily</h2><p class="sub">Change wording, add, remove and move tasks. Changes reach every phone when you tap Save.</p><div id="dailyEd"></div>
       <button type="button" class="btn add" id="addSection">+ Add section</button></section>
     <section id="weekly" hidden><h2>Weekly</h2><p class="sub">One section per day. A task only shows on its day’s list.</p><div id="weeklyEd"></div></section>
     <section id="monthly" hidden><h2>Monthly</h2><p class="sub">Done any day during the month; the list starts fresh on the 1st.</p><div id="monthlyEd"></div>
       <button type="button" class="btn add" id="addMonthSection">+ Add section</button></section>
-    <section id="positions" hidden><h2>Positions</h2><p class="sub">Tap a position on a task to assign it. Renaming here renames it on every task.</p>
-      <ul class="list" id="posList" style="margin-top:14px"></ul>
-      <div class="row" style="margin-top:10px"><input type="text" id="newPos" maxlength="30" placeholder="New position, e.g. PM Bartender" style="flex:1;min-width:0"><button type="button" class="btn primary" id="addPos">Add</button></div>
-    </section>
-    <section id="peopleBox" hidden><h2>People</h2><p class="sub">First names remembered on staff phones. Assign someone on a task with “Assign to a person.” A name typed differently on two phones shows twice.</p>
-      <ul class="list" id="peopleList" style="margin-top:14px"></ul></section>
     <p class="foot">Checks already made stay in the records. A removed task disappears from phones; a reworded one keeps its checks. <a href="./">Open the staff page</a></p>
   </div>
 </main>
@@ -159,7 +162,7 @@ function clean(x){
     items:(g.items||[]).map(i=>({id:String(i.id),t:String(i.t||''),d:String(i.d||''),c:(i.c||[]).map(String),p:!!i.p,s:(i.s||[]).map(String),pos:(i.pos||[]).map(String),who:(i.who||[]).map(String)}))}));
   return {daily:g(x.daily),weekly:g(x.weekly),monthly:g(x.monthly),positions:(x.positions||[]).map(String)};
 }
-let PEOPLE=[], M=null, saved='', fb=null, UID='', NAME='', remote=null, fromSaved=false;
+let M=null, saved='', fb=null, UID='', NAME='', remote=null, fromSaved=false;
 try{NAME=localStorage.getItem('foh-name')||''}catch(e){}
 const snap=()=>JSON.stringify(M);
 function dirty(){return M&&snap()!==saved}
@@ -179,8 +182,57 @@ function armed(btn,label,fn){btn.addEventListener('click',()=>{
 function iconBtn(txt,label,fn,dis){const b=el('button','btn icon',txt);b.type='button';b.setAttribute('aria-label',label);b.title=label;b.disabled=!!dis;b.addEventListener('click',fn);return b}
 function rerender(focusSel){render();mark();if(focusSel){const f=document.querySelector(focusSel);if(f)f.focus({preventScroll:false})}}
 
+let ARRANGE=false;
+$('arrangeBtn').addEventListener('click',()=>{ARRANGE=!ARRANGE;$('arrangeBtn').setAttribute('aria-pressed',String(ARRANGE));
+  $('arrangeBtn').textContent=ARRANGE?'✓ Done arranging':'☰ Arrange order';
+  document.querySelectorAll('.btn.add').forEach(b=>{b.hidden=ARRANGE});render()});
+/* Arrange mode: one compact line per task; drag the ☰ handle (finger or mouse) or use ↑ ↓ */
+function renderArrange(list,mount){
+  M[list].forEach((g,gi)=>{
+    mount.appendChild(el('h3','ahead',(g.role||'(untitled)')+' · '+g.items.length));
+    const ul=el('ul','list');ul.dataset.list=list;ul.dataset.gi=gi;
+    g.items.forEach((it,ii)=>{
+      const li=el('li','arow');li.dataset.id=it.id;
+      const h=el('button','handle','☰');h.type='button';h.setAttribute('aria-label','Drag to move: '+(it.t||'task'));h.title='Drag to move';
+      h.addEventListener('pointerdown',e=>startDrag(e,li,ul,g));
+      li.append(h,el('span','ttl',it.t||'(no wording yet)'),
+        iconBtn('↑','Move up',()=>{g.items.splice(ii-1,0,g.items.splice(ii,1)[0]);render();mark();focusRow(it.id)},ii===0),
+        iconBtn('↓','Move down',()=>{g.items.splice(ii+1,0,g.items.splice(ii,1)[0]);render();mark();focusRow(it.id)},ii===g.items.length-1));
+      ul.appendChild(li);
+    });
+    if(!g.items.length)ul.appendChild(el('li','arow hint','No tasks yet.'));
+    mount.appendChild(ul);
+  });
+}
+function focusRow(id){const r=document.querySelector('.arow[data-id="'+id+'"] .handle');if(r)r.focus({preventScroll:true})}
+function startDrag(e,li,ul,g){
+  if(e.button>0)return;e.preventDefault();
+  const h=e.currentTarget,pid=e.pointerId;
+  li.classList.add('dragging');let lastY=e.clientY,scrollT=null;
+  const place=y=>{
+    const rows=[...ul.querySelectorAll('.arow[data-id]')].filter(r=>r!==li);
+    let before=null;for(const r of rows){const b=r.getBoundingClientRect();if(y<b.top+b.height/2){before=r;break}}
+    if(before!==li.nextElementSibling)ul.insertBefore(li,before);
+  };
+  const move=ev=>{
+    if(ev.pointerId!==pid)return;ev.preventDefault();lastY=ev.clientY;place(lastY);
+    /* near the top or bottom of the screen the page scrolls, and the task keeps following the finger */
+    const top=150,bottom=innerHeight-70;clearInterval(scrollT);scrollT=null;
+    if(lastY<top||lastY>bottom)scrollT=setInterval(()=>{window.scrollBy(0,lastY<top?-12:12);place(lastY)},16);
+  };
+  const end=()=>{
+    clearInterval(scrollT);li.classList.remove('dragging');window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',end);window.removeEventListener('pointercancel',end);
+    const order=[...ul.querySelectorAll('.arow[data-id]')].map(r=>r.dataset.id),byId={};g.items.forEach(i=>{byId[i.id]=i});
+    const next=order.map(id=>byId[id]).filter(Boolean);
+    if(next.length===g.items.length&&next.some((x,i)=>x!==g.items[i])){g.items.splice(0,g.items.length,...next);mark()}
+    render();focusRow(li.dataset.id);
+  };
+  /* listen on the whole window: moving the row in the page would otherwise drop the finger */
+  window.addEventListener('pointermove',move,{passive:false});window.addEventListener('pointerup',end);window.addEventListener('pointercancel',end);
+}
 function renderList(list){
   const mount=$(list+'Ed');mount.replaceChildren();
+  if(ARRANGE){renderArrange(list,mount);return}
   M[list].forEach((g,gi)=>{
     const box=el('div','grp');
     const head=el('div','ghead');
@@ -214,18 +266,6 @@ function taskRow(list,gi,ii,g,it){
   t.addEventListener('input',()=>{if(/\n/.test(t.value))t.value=t.value.replace(/\s*\n\s*/g,' ');it.t=t.value;mark()});
   const d=el('textarea');d.rows=1;d.value=it.d;d.placeholder='Details (optional)';d.setAttribute('aria-label','Details');
   d.addEventListener('input',()=>{it.d=d.value;mark()});
-  const pr=el('div','row');pr.appendChild(el('span','lbl','Position'));
-  if(!M.positions.length)pr.appendChild(el('span','hint','Add positions on the Positions tab'));
-  M.positions.forEach(p=>{const c=el('button','chip',p);c.type='button';c.setAttribute('aria-pressed',String(it.pos.includes(p)));
-    c.addEventListener('click',()=>{const on=it.pos.includes(p);it.pos=on?it.pos.filter(x=>x!==p):[...it.pos,p];c.setAttribute('aria-pressed',String(!on));mark()});pr.appendChild(c)});
-  const pp=el('details','people');const ps=el('summary',null,'');
-  const sumTxt=()=>{ps.textContent=it.who.length?'Assigned to: '+it.who.join(', '):'Assign to a person'};sumTxt();pp.appendChild(ps);
-  const pr2=el('div','row');pr2.style.marginTop='8px';
-  const names=[...new Set([...PEOPLE.map(x=>x.name),...it.who])];
-  if(!names.length)pr2.appendChild(el('span','hint','Names show here once staff open FOH on their phones.'));
-  names.forEach(n=>{const c=el('button','chip',n);c.type='button';c.setAttribute('aria-pressed',String(it.who.includes(n)));
-    c.addEventListener('click',()=>{const on=it.who.includes(n);it.who=on?it.who.filter(x=>x!==n):[...it.who,n];c.setAttribute('aria-pressed',String(!on));sumTxt();mark()});pr2.appendChild(c)});
-  pp.appendChild(pr2);
   const more=el('details');more.appendChild(el('summary',null,'Photo & Food Code'));
   const mg=el('div','more');
   const pl=el('label','check');const pc=el('input');pc.type='checkbox';pc.checked=it.p;pc.addEventListener('change',()=>{it.p=pc.checked;mark()});pl.append(pc,el('span',null,'Photo required'));
@@ -245,44 +285,17 @@ function taskRow(list,gi,ii,g,it){
   const rm=el('button','btn danger','Remove');rm.type='button';
   armed(rm,'Tap again to remove',()=>{g.items.splice(ii,1);rerender();toast('Task removed. Tap Save to publish.')});
   ctl.append(mv,rm);
-  li.append(t,d,pr,pp,more,ctl);return li;
-}
-function renderPositions(){
-  const ul=$('posList');ul.replaceChildren();
-  if(!M.positions.length)ul.appendChild(el('li','pos-row hint','No positions yet.'));
-  M.positions.forEach((p,pi)=>{
-    const li=el('li','pos-row');const inp=el('input');inp.type='text';inp.value=p;inp.maxLength=30;inp.setAttribute('aria-label','Position name');
-    inp.addEventListener('change',()=>{const n=inp.value.trim();const old=M.positions[pi];
-      if(!n||M.positions.some((x,j)=>j!==pi&&x.toLowerCase()===n.toLowerCase())){inp.value=old;toast(n?'That position already exists.':'A position needs a name.');return}
-      M.positions[pi]=n;allGroups().forEach(x=>x.g.items.forEach(i=>{i.pos=i.pos.map(q=>q===old?n:q)}));render();mark()});
-    const used=allGroups().reduce((s,x)=>s+x.g.items.filter(i=>i.pos.includes(p)).length,0);
-    const rm=el('button','btn danger','Remove');rm.type='button';
-    armed(rm,used?'Tap again: unassigns '+used+' tasks':'Tap again to remove',()=>{M.positions.splice(pi,1);allGroups().forEach(x=>x.g.items.forEach(i=>{i.pos=i.pos.filter(q=>q!==p)}));render();mark()});
-    li.append(inp,el('span','hint',used+' tasks'),rm);ul.appendChild(li);
-  });
+  li.append(t,d,more,ctl);return li;
 }
 /* text boxes grow to fit their text */
 function grow(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px'}
 document.addEventListener('input',e=>{if(e.target.tagName==='TEXTAREA')grow(e.target)});
 function growAll(){document.querySelectorAll('#editor section:not([hidden]) textarea').forEach(grow)}
 window.addEventListener('resize',growAll);
-function renderPeople(){
-  const ul=$('peopleList');ul.replaceChildren();
-  if(!PEOPLE.length)ul.appendChild(el('li','pos-row hint','No one yet. Names appear when staff open FOH and type their first name.'));
-  const day=new Intl.DateTimeFormat([],{month:'short',day:'numeric',timeZone:C.timeZone||'America/New_York'});
-  PEOPLE.forEach(x=>{const li=el('li','pos-row');li.appendChild(el('span','ttl',x.name));li.lastChild.style.flex='1';
-    const n=allGroups().reduce((s,g)=>s+g.g.items.filter(i=>i.who.includes(x.name)).length,0);
-    li.appendChild(el('span','hint',n+' tasks'+(x.seen?' · last seen '+day.format(x.seen):'')));ul.appendChild(li)});
-}
-function render(){renderPeople();renderList('daily');renderList('weekly');renderList('monthly');renderPositions();requestAnimationFrame(growAll)}
+function render(){renderList('daily');renderList('weekly');renderList('monthly');requestAnimationFrame(growAll)}
 [['addSection','daily'],['addMonthSection','monthly']].forEach(([b,list])=>$(b).addEventListener('click',()=>{
   M[list].push({role:list==='monthly'?'Monthly · New section':'New section',note:'',day:null,items:[]});render();mark();
   const ins=$(list+'Ed').querySelectorAll('.ghead input');const last=ins[ins.length-1];last.focus();last.select()}));
-$('addPos').addEventListener('click',()=>{const n=$('newPos').value.trim();
-  if(!n){toast('Type a position name first.');return}
-  if(M.positions.some(x=>x.toLowerCase()===n.toLowerCase())){toast('That position already exists.');return}
-  M.positions.push(n);$('newPos').value='';render();mark();toast('Added '+n+'. Assign it on the Daily and Weekly tabs.')});
-$('newPos').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('addPos').click()}});
 $('discard').addEventListener('click',()=>{M=JSON.parse(saved);render();mark();showProposal();toast('Changes discarded.')});
 
 function problems(){
@@ -309,7 +322,7 @@ $('save').addEventListener('click',()=>{
 });
 
 const tabs=[...document.querySelectorAll('#tabs button')];
-function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));['daily','weekly','monthly','positions'].forEach(s=>{$(s).hidden=s!==id});$('peopleBox').hidden=id!=='positions';window.scrollTo(0,0);requestAnimationFrame(growAll)}
+function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.dataset.tab===id)));['daily','weekly','monthly'].forEach(s=>{$(s).hidden=s!==id});window.scrollTo(0,0);requestAnimationFrame(growAll)}
 tabs.forEach(t=>t.addEventListener('click',()=>show(t.dataset.tab)));
 
 function gate(msg,showId){$('gateMsg').textContent=msg;$('gateId').hidden=!showId;if(showId)$('uid').textContent=UID}
@@ -389,12 +402,6 @@ async function connect(){
       const listed=Array.isArray(C.managers)&&C.managers.includes(UID);
       const decide=isMgr=>{
         if(!isMgr){gate('This page is for managers. To get access, send this device ID to the owner:',true);return}
-        fb.onSnapshot(fb.collection(db,'locations',LOC,'devices'),q=>{
-          const by={};q.forEach(d=>{const x=d.data({serverTimestamps:'estimate'});const n=String(x.name||'').trim();if(!n)return;
-            const k=n.toLowerCase(),seen=x.lastSeen&&x.lastSeen.toDate?x.lastSeen.toDate():null;
-            if(!by[k]||(seen&&(!by[k].seen||seen>by[k].seen)))by[k]={name:n,seen}});
-          PEOPLE=Object.values(by).sort((a,b)=>a.name.localeCompare(b.name));if(M)render();
-        },()=>{});
         fb.onSnapshot(fb.doc(db,'locations',LOC,'config','tasks'),s=>{
           const data=s.exists()?clean(s.data()):null;
           if(!M){fromSaved=!!data;M=data||fromBuiltIn();saved=snap();openEditor();return}

@@ -195,9 +195,7 @@ await t('Not finished: count on Home, list by section, position filter, tap jump
   await pa.click('#nfBtn'); ok(await pa.isVisible('#notdone'), 'not open'); await pa.screenshot({path: 'tests/shots/phone-notfinished.png'});
   const n = await pa.locator('#nfList .nfrow').count(); ok(n > 10, 'rows ' + n);
   ok(!(await pa.textContent('#nfList')).includes('Entire bar top and display shelves wiped down'), 'shows a finished task');
-  const filters = await pa.locator('#nfFilters button').allTextContents(); ok(filters.includes('Mine'), filters.join());
-  await pa.click('#nfFilters button:text-is("Mine")'); const mine = await pa.locator('#nfList .nfrow').count(); ok(mine < n, 'mine did not filter');
-  await pa.click('#nfFilters button:text-is("All")');
+  ok(await pa.locator('#nfFilters, #nfList .tag.pos').count() === 0, 'position filters/tags still shown');
   const first = await pa.locator('#nfList .nfrow .ttl').first().textContent(); await pa.locator('#nfList .nfrow').first().click();
   ok(await pa.isVisible('#daily'), 'did not go to Daily'); await pa.waitForSelector('.task.flash');
   ok((await pa.textContent('.task.flash .ttl')) === first, 'wrong task');
@@ -229,13 +227,8 @@ await t('manager page: rename, assign a position, move and add tasks, Save; staf
   await pm.goto(URL + 'manage.html?emulator=1');
   await pm.waitForSelector('#editor:not([hidden])', {timeout: 8000});
   ok((await pm.inputValue('#t-o-dust')) === 'Walls, ceilings, and lights brushed', 'built-in list not loaded');
-  const chips = await pm.locator('li:has(#t-o-dust) > .row .chip').allTextContents(); ok(chips.join('|') === 'AM Bar|PM Bar|AM Server|PM Server|Food Runner', 'positions: ' + chips);
-  await pm.click('#tabs button[data-tab=positions]'); await pm.waitForFunction(() => /Ana[\s\S]*Ben/.test(document.getElementById('peopleList').textContent), null, {timeout: 6000});
-  await pm.click('#tabs button[data-tab=daily]');
+  ok(await pm.locator('.chip, details.people, #tabs button[data-tab=positions]').count() === 0, 'position/person options still shown');
   await pm.fill('#t-o-dust', 'Walls, ceilings, lights and fans brushed');
-  await pm.locator('li:has(#t-o-dust) .chip', {hasText: /^AM Bar$/}).click();
-  await pm.locator('li:has(#t-o-dust) details.people summary').click();
-  await pm.locator('li:has(#t-o-dust) details.people .chip', {hasText: /^Ana$/}).click();
   await pm.locator('li:has(#t-o-taps) select.move').selectOption({label: 'Daily › Close · Bar breakdown'});
   await pm.locator('.grp', {has: pm.locator('#t-c-tvs')}).locator('.btn.add').click();
   await pm.keyboard.type('Patio heaters off');
@@ -243,7 +236,6 @@ await t('manager page: rename, assign a position, move and add tasks, Save; staf
   await pm.click('#save');
   await pa.click('#tab-daily');
   await pa.waitForFunction(() => document.querySelector('#chk-o-dust + .t .ttl')?.textContent === 'Walls, ceilings, lights and fans brushed', null, {timeout: 6000});
-  const tags = await pa.textContent('#chk-o-dust + .t .tags'); ok(tags.includes('AM Bar') && tags.includes('For Ana'), 'no position/person tag: ' + tags);
   const order = await pa.evaluate(() => [...document.querySelectorAll('#dailyLists .ttl')].map(x => x.textContent));
   ok(order.indexOf('Beer taps on') > order.indexOf('Wells broken down; every bottle wiped and locked up'), 'not moved');
   ok(order.includes('Patio heaters off'), 'new task missing');
@@ -258,11 +250,22 @@ await t('manager page: a task with no wording cannot be saved', async () => {
   await pm.waitForSelector('.toast.show'); ok((await pm.textContent('#toast')).includes('has no wording'), await pm.textContent('#toast'));
   await pm.click('#discard'); ok(await pm.isDisabled('#save'), 'discard failed');
 });
-await t('manager page: positions can be added and renamed everywhere', async () => {
-  await pm.click('#tabs button[data-tab=positions]'); await pm.fill('#newPos', 'Host'); await pm.click('#addPos');
-  const first = pm.locator('#posList .pos-row input').first(); await first.fill('AM Bar Lead'); await first.press('Enter'); await first.blur();
-  await pm.click('#save');
-  await pa.waitForFunction(() => document.querySelector('#chk-o-dust + .t .tags')?.textContent.includes('AM Bar Lead'), null, {timeout: 6000});
+await t('manager page: Arrange order shows one line per task; dragging the handle reorders it for staff', async () => {
+  await pm.click('#arrangeBtn'); ok(await pm.locator('.arow[data-id]').count() > 30 && await pm.locator('textarea:visible').count() === 0, 'not compact');
+  const ids = () => pm.evaluate(() => [...document.querySelector('#dailyEd ul.list').querySelectorAll('.arow[data-id]')].map(r => r.dataset.id));
+  await pm.evaluate(() => { document.querySelector('#dailyEd ul.list').scrollIntoView({block: 'start'}); window.scrollBy(0, -300); });
+  const before = await ids(), moving = before[3];
+  const h = pm.locator('.arow[data-id="' + moving + '"] .handle'), target = pm.locator('.arow[data-id="' + before[0] + '"]');
+  const hb = await h.boundingBox(), tb = await target.boundingBox();
+  await pm.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await pm.mouse.down();
+  await pm.mouse.move(hb.x + hb.width / 2, tb.y + 5, {steps: 8}); await pm.mouse.up();
+  const after = await ids(); ok(after[0] === moving && after.length === before.length, 'drag: ' + after.slice(0, 5));
+  await pm.locator('.arow[data-id="' + after[2] + '"] button[aria-label="Move up"]').click();
+  const after2 = await ids(); ok(after2[1] === after[2], 'arrow move');
+  await pm.setViewportSize({width: 390, height: 844}); await pm.evaluate(() => window.scrollTo(0, 0)); await pm.screenshot({path: 'tests/shots/manage-arrange.png'}); await pm.setViewportSize({width: 1280, height: 900});
+  await pm.click('#save'); await pm.click('#arrangeBtn');
+  await pa.click('#tab-daily');
+  await pa.waitForFunction(id => document.querySelector('#dailyLists ul.list .box')?.id === 'chk-' + id, moving, {timeout: 6000});
 });
 await t('manager page: prepared changes are offered, added in place with one tap, and reach staff after Save', async () => {
   await pm.reload(); await pm.waitForSelector('#proposal:not([hidden])', {timeout: 8000});
@@ -275,7 +278,6 @@ await t('manager page: prepared changes are offered, added in place with one tap
   await pa.click('#tab-daily'); await pa.waitForSelector('#chk-c-syrup', {timeout: 6000});
   const order = await pa.evaluate(() => [...document.querySelectorAll('#dailyLists .box')].map(b => b.id));
   ok(order.indexOf('chk-c-wellin') === order.indexOf('chk-c-bottles') + 1 && order.indexOf('chk-c-syrup') === order.indexOf('chk-c-wellin') + 1, 'wrong place');
-  ok((await pa.textContent('#chk-c-syrup + .t .tags')).includes('PM Bar'), 'no position');
   ok((await pa.textContent('#chk-o-taps + .t .ttl')) === 'Beer taps turned on', 'edit not live');
   ok((await pa.textContent('#dailyLists')).includes('Open · Floor & entry'), 'section rename not live');
   await pa.waitForSelector('#tab-monthly:not([hidden])', {timeout: 6000}); await pa.click('#tab-monthly');

@@ -215,7 +215,6 @@ a.tag{color:var(--pine);border-color:currentColor}
   <section id="notdone" hidden>
     <h2>Not finished</h2>
     <p class="sub" id="nfSub"></p>
-    <div class="nffil" id="nfFilters" role="group" aria-label="Show"></div>
     <div id="nfList"></div>
   </section>
 
@@ -373,8 +372,6 @@ function build(sc){
       const slots=SLOTS[id];
       if(slots)t.appendChild(el('span','d','Photos: '+slots.join(' + ')));
       const tags=el('div','tags');
-      (POS[id]||[]).forEach(p=>tags.appendChild(el('span','tag pos',p)));
-      (WHO[id]||[]).forEach(p=>tags.appendChild(el('span','tag who-tag','For '+p)));
       if(PHOTO.has(id))tags.appendChild(el('span','tag photo','Photo'));
       (code||[]).forEach(c=>tags.appendChild(codeLink(c)));
       if(tags.childNodes.length)t.appendChild(tags);
@@ -478,7 +475,6 @@ function renderTeam(closed){
     li.append(el('span','nm',n),b,el('span','pc',pc+'% · '+c+(c===1?' task':' tasks')));return li}):[el('li','meta','No one has checked anything off yet today.')]));
 }
 /* ===== Not finished: today's open tasks (daily, today's weekly, this month's monthly), filterable ===== */
-let nfFilter='all';try{nfFilter=localStorage.getItem('foh-nf')||'all'}catch(e){}
 function openTasks(){
   const out=[],wg=WEEKLY.find(x=>x.day===DOW);
   DAILY.forEach(g=>g.items.forEach(([id,t])=>{if(!live.day[id])out.push({sc:'day',tab:'daily',grp:g.role,id,t})}));
@@ -490,17 +486,13 @@ function renderNotDone(closed){
   const all=closed?[]:openTasks(),ph=all.filter(x=>PHOTO.has(x.id)).length,today=all.filter(x=>x.sc!=='month').length;
   $('nfBtn').hidden=closed;$('nfBtn').classList.toggle('clear',!today);
   $('nfCount').textContent=today?today+(today===1?' task':' tasks')+' left today'+(ph?' · '+ph+' need photos':''):'Everything for today is done';
-  const pos=[...new Set(Object.values(POS).flat())],opts=[['all','All'],['mine','Mine']].concat(pos.map(p=>[p,p]));
-  if(!opts.some(o=>o[0]===nfFilter))nfFilter='all';
-  $('nfFilters').replaceChildren(...opts.map(([k,l])=>{const b=el('button',null,l);b.type='button';b.setAttribute('aria-pressed',String(k===nfFilter));
-    b.addEventListener('click',()=>{nfFilter=k;try{localStorage.setItem('foh-nf',k)}catch(e){}renderNotDone(dayState()==='closed')});return b}));
-  const list=all.filter(x=>nfFilter==='all'||(nfFilter==='mine'?(WHO[x.id]||[]).includes(NAME):(POS[x.id]||[]).includes(nfFilter)));
+  const list=all;
   $('nfSub').textContent=closed?'We’re closed today.':(list.length?list.length+' open · tap one to go to it. Everything must be done before you close out.':'Nothing left here.');
   const groups={};list.forEach(x=>{(groups[x.grp]=groups[x.grp]||[]).push(x)});
   $('nfList').replaceChildren(...Object.keys(groups).map(gn=>{const f=document.createDocumentFragment();
     const h=el('h3','grp');h.appendChild(el('span',null,gn));h.appendChild(el('span','gc',groups[gn].length+' left'));f.appendChild(h);
     const box=el('div','nflist');groups[gn].forEach(x=>{const b=el('button','nfrow');b.type='button';const t=el('div','t');t.appendChild(el('span','ttl',x.t));
-      const tags=el('div','tags');(POS[x.id]||[]).forEach(p=>tags.appendChild(el('span','tag pos',p)));(WHO[x.id]||[]).forEach(p=>tags.appendChild(el('span','tag who-tag','For '+p)));
+      const tags=el('div','tags');
       if(PHOTO.has(x.id))tags.appendChild(el('span','tag photo','Photo'));if(tags.childNodes.length)t.appendChild(tags);
       b.append(t,el('span','go','›'));b.addEventListener('click',()=>goTask(x));box.appendChild(b)});f.appendChild(box);return f}));
 }

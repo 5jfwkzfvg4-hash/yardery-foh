@@ -79,8 +79,6 @@
     function rows(items, checks, kind) {
       return items.map(function (it) {
         var rec = checks[it.id], tags = [];
-        (it.pos || []).forEach(function (p) { tags.push(esc(p)); });
-        (it.who || []).forEach(function (p) { tags.push('For ' + esc(p)); });
         if (it.p) tags.push(rec && rec.photos && rec.photos.length ? 'Photo' : '<b>Photo required</b>');
         var status = rec
           ? '<td class="ok">&#10003; Done</td><td>' + esc(rec.name) + '<br><span class="t">' + (rec.day && rec.day !== day ? esc(shortDate(rec.day).slice(4)) + ' ' : '') + clock(rec.at, offset) + '</span></td>'

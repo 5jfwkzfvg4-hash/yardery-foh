@@ -13,23 +13,19 @@ through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff 
   4 PM) and "left open" (at close), the tasks most often missed over the last 7 open days, one Food Code tip a day
   (`reminders.js` → `health`, rotates by date) and one service standard a day (`tasks.js` → `STANDARDS`).
 - **Progress:** Daily / Weekly / Monthly boxes, and **Team today**: each person's share of today's tasks.
-- **Not finished:** button under Progress with today's open tasks and photos; opens a list by section with filters
-  (All, Mine = tasks assigned to me by name, or a position). Tapping a task jumps to it on its checklist.
+- **Not finished:** button under Progress with today's open tasks and photos; opens a list by section.
+  Tapping a task jumps to it on its checklist.
 - **Coming up:** parties, deliveries and holidays for the next 7 days.
 - Deliveries, parties, holidays and often-missed come from the nightly script (`locations/{id}/board/current`); the
   script's sign-in must be listed in `firestore.rules` → `scriptIds()`.
 
 ## Edit tasks: the manager page
 **https://5jfwkzfvg4-hash.github.io/yardery-foh/manage.html**. Manager phones also see a **Manager page** link on the staff page (under the Home boxes, and next to "Not you?"); staff phones never see it.
-- **Daily / Weekly tabs:** change a task's wording or details, ↑ ↓ to reorder, **Move to…** another section or day,
-  **Remove** (tap twice), **+ Add task**, and tap a **position** to assign it. Daily sections can be added, renamed,
-  reordered and removed; Weekly has one section per day. **Photo & Food Code** holds the Photo tag and code links.
-- **Assign to a person:** on any task, open **Assign to a person** and tap a name. Names come from the phones
-  that have opened FOH (first names they typed). Staff see a "For Ana" tag on that task.
-- **Monthly tab:** monthly sections and tasks; staff check them off any day during the month, and they start fresh on the 1st.
-  Staff see a Monthly tab and Home box once there is a monthly list.
-- **Team tab:** add, rename (renames it on every task) or remove positions (AM Bar, PM Bar, AM Server, PM Server,
-  Food Runner), and see everyone whose phone has opened FOH, with how many tasks each person has.
+- **Daily / Weekly / Monthly tabs:** change a task's wording or details, **Move to…** another section or day,
+  **Remove** (tap twice), **+ Add task**. Daily and Monthly sections can be added, renamed, reordered and removed;
+  Weekly has one section per day. **Photo & Food Code** holds the Photo tag, photo spots and code links.
+- **☰ Arrange order:** switches to one line per task; drag the ☰ handle (finger or mouse) to a new spot, or use ↑ ↓.
+  Tap **Done arranging**, then **Save**.
 - Nothing changes for staff until you tap **Save**; then every phone shows the new list within seconds.
   **Discard** throws away unsaved edits. Every save is also kept as a copy (Firestore `taskHistory`), so an
   older list can be brought back.
