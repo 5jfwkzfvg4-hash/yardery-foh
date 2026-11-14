@@ -55,6 +55,10 @@ const waitPressed = (p, id, v) => p.waitForFunction(([id, v]) => document.getEle
 await t('first visit asks for a first name', async () => { ok(await pa.isVisible('#setup'), 'setup hidden'); });
 await pa.fill('#firstName', 'ana'); await pa.click('#setupForm .go');
 await pb.fill('#firstName', 'Ben'); await pb.click('#setupForm .go');
+await t('Home shows the service standards card', async () => {
+  await pa.click('#tab-home'); const txt = await pa.textContent('#standards');
+  ok(await pa.isVisible('#standards') && txt.includes('See it, clean it') && txt.includes('No guest refills their own drink'), txt);
+});
 await t('name is remembered and capitalized', async () => { ok((await pa.textContent('#whoName')) === 'Ana', 'name'); });
 await pa.click('#tab-daily');
 await pa.waitForFunction(() => document.querySelectorAll('#dailyLists .box').length > 30);

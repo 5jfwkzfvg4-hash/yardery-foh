@@ -1,6 +1,6 @@
 {
- "id": "2026-11-13-guide-additions-2",
- "note": "Additions from the bar-guide research (items 1, 2, 4, 7, 9, 11 and 13, requested Nov 13; ice machine updated).",
+ "id": "2026-11-14-sop-additions",
+ "note": "Bar-guide additions (Nov 13) and items from the FOH Standards SOP and memos (Nov 14).",
  "ops": [
   {
    "op": "add",
@@ -146,6 +146,126 @@
     "id": "m-icemachine",
     "t": "Ice machine burned, cleaned, and sanitized inside; air filters cleaned",
     "d": "Turn the machine off and burn (melt) all the ice in the bin. Clean, then sanitize, the inside of the bin and every surface that touches ice, using the ice-machine cleaner and sanitizer and the steps in the machine's manual. Pull the air filters, rinse off the dust, let them dry, and put them back. Tell the MOD about any mold, slime, or damage. The full machine service still follows the manufacturer's schedule (usually every 6 months)."
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "AM Checklist",
+   "after": "o-trash",
+   "item": {
+    "id": "o-door",
+    "t": "Front door Windexed",
+    "d": "Every opener, every morning, no exceptions.",
+    "pos": [
+     "AM Bar",
+     "AM Server",
+     "Food Runner"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "PM Checklist",
+   "after": "c-dining",
+   "item": {
+    "id": "c-slats",
+    "t": "Table slats cleaned; straw wrappers and debris removed",
+    "d": "Every table, every night.",
+    "pos": [
+     "PM Server",
+     "PM Bar",
+     "Food Runner"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "PM Checklist",
+   "after": "c-drink",
+   "item": {
+    "id": "c-ketchup",
+    "t": "Ketchup dispenser cleaned",
+    "pos": [
+     "PM Server",
+     "PM Bar",
+     "Food Runner"
+    ]
+   }
+  },
+  {
+   "op": "edit",
+   "id": "c-reset",
+   "from": {
+    "d": "Make sure enough of each product is stocked so the opener can complete opening tasks and stocking."
+   },
+   "to": {
+    "d": "Make sure enough of each product is stocked so the opener can complete opening tasks and stocking. Leave the bar clean enough to open with no re-cleaning in the morning."
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "PM Checklist",
+   "after": "c-rest",
+   "item": {
+    "id": "c-checkout",
+    "t": "Closing checkout chain completed",
+    "d": "Each server checks out with the closing server; the closing server checks out with the closing bartender; the closing bartender confirms every closing duty is done before the team is released.",
+    "pos": [
+     "PM Bar"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "AM/PM Checklist",
+   "after": "c-wine",
+   "item": {
+    "id": "a-yardtrash",
+    "t": "Patio and yard trash picked up",
+    "d": "Walk the whole patio and yard.",
+    "pos": [
+     "AM Bar",
+     "PM Bar",
+     "AM Server",
+     "PM Server",
+     "Food Runner"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "AM/PM Checklist",
+   "after": "a-yardtrash",
+   "item": {
+    "id": "a-delivery",
+    "t": "Beer and liquor deliveries put away neatly as they arrive",
+    "d": "Bartender on duty. Nothing stacked on the kegs, nothing left on the floor or staged around the bar; liquor fully put up, not piled.",
+    "pos": [
+     "AM Bar",
+     "PM Bar"
+    ]
+   }
+  },
+  {
+   "op": "add",
+   "list": "daily",
+   "group": "AM/PM Checklist",
+   "after": "a-delivery",
+   "item": {
+    "id": "a-diningwalk",
+    "t": "Dining room walk: no dirty tables, menus cleared, drinks refilled",
+    "d": "Keep doing it all shift. Bus and wipe every table as guests leave, clear menus once guests order, and offer refills so no guest refills their own drink.",
+    "pos": [
+     "AM Server",
+     "PM Server",
+     "Food Runner"
+    ]
    }
   }
  ]

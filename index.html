@@ -96,6 +96,7 @@ a.tag{color:var(--pine);border-color:currentColor}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100% - 32px)}
 .toast.show{opacity:1}
 .mgr-home{margin:14px 0 0}
+.standards ul{margin:8px 0 0;padding-left:20px}.standards li{margin:4px 0}.std-src{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
 .lockbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hdr,98px) + 6px);z-index:4;margin:0 0 12px;padding:10px 14px;border-radius:12px;font:600 14.5px/1.35 var(--body);background:var(--panel);border:1px solid var(--line);color:var(--ink)}
 .lockbar.soon{background:var(--amber);border-color:var(--amber);color:#1E241A}
 .lockbar strong{font-variant-numeric:tabular-nums;font-size:17px}
@@ -159,6 +160,7 @@ a.tag{color:var(--pine);border-color:currentColor}
         <span class="pct" id="sumMonthPct">0%</span>
       </button>
     </div>
+    <div class="note standards" id="standards" hidden><strong id="stdTitle"></strong><ul id="stdList"></ul><p class="std-src" id="stdSrc"></p></div>
     <p class="mgr-home"><a class="linkbtn mgr" href="manage.html" hidden>Manager page: edit and assign tasks</a></p>
   </section>
 
@@ -259,6 +261,10 @@ function setDates(){
   return true;
 }
 setDates();
+/* Service standards card (tasks.js STANDARDS) */
+(function(){const S=T.STANDARDS;if(!S||!S.items||!S.items.length)return;
+  $('stdTitle').textContent=S.title||'Service standards';$('stdList').replaceChildren(...S.items.map(x=>el('li',null,x)));
+  $('stdSrc').textContent=S.source||'';$('standards').hidden=false})();
 if(C.locationName)document.querySelector('.brand span').textContent=C.locationName+' · Cleaning checklists';
 
 /* first-visit setup: first name remembered on this device (and on its anonymous Firebase user) */
