@@ -70,6 +70,8 @@ await t('monthly check must be for a day in that month', assertFails(setDoc(doc(
 await t('a manager can save a monthly list', assertSucceeds(setDoc(doc(L, 'locations/sanford/config/tasks'), tasks('TjGZ7fcbmAgo4y2skvQPfuH4fJB2', {monthly: [{role: 'Monthly', note: '', day: null, items: []}]}))));
 await t('staff can read the Home board', assertSucceeds(getDoc(doc(A, 'locations/sanford/board/current'))));
 await t('staff cannot write the Home board', assertFails(setDoc(doc(A, 'locations/sanford/board/current'), {missed: []})));
+await t('the nightly script can write the Home board', assertSucceeds(setDoc(doc(env.authenticatedContext('2hX2Z2ViDJY78J1DrlzwblLi6XJ3').firestore(), 'locations/sanford/board/current'), {missed: []})));
+await t('the nightly script cannot change task lists', assertFails(setDoc(doc(env.authenticatedContext('2hX2Z2ViDJY78J1DrlzwblLi6XJ3').firestore(), 'locations/sanford/config/tasks'), {daily: []})));
 await t('a manager can write the Home board', assertSucceeds(setDoc(doc(L, 'locations/sanford/board/current'), {missed: []})));
 // closing lock
 const W = 'locations/sanford/days/2026-10-28/checks/';   // a Wednesday, already past

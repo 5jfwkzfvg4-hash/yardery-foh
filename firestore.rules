@@ -25,7 +25,7 @@ service cloud.firestore {
     }
     // The nightly PDF script's own sign-in (its setup log shows the id; add it here and publish).
     function scriptIds() {
-      return [];
+      return ['2hX2Z2ViDJY78J1DrlzwblLi6XJ3'];   // FOH nightly PDF script (Clay's Google account)
     }
     function isManager(loc) {
       return request.auth.uid in managerIds().get(loc, [])
