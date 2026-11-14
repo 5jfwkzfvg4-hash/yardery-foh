@@ -6,6 +6,9 @@
 <title>FOH Manager</title>
 <meta name="robots" content="noindex">
 <meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#2F5233">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1C2B1E">
 <script src="config.js"></script>
 <script src="tasks.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -94,6 +97,34 @@ details .more{display:grid;gap:8px;margin-top:8px}
 .foot{font-size:12.5px;color:var(--muted);margin-top:28px}
 .foot a{color:var(--pine)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ===== Polish: compact top bar, comfortable tap targets, light/dark, every screen size ===== */
+:root{--bar:#2F5233;--bar-ink:#FFFFFF}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bar:#1C2B1E;--bar-ink:#E8ECE2}}
+:root[data-theme="dark"]{--bar:#1C2B1E;--bar-ink:#E8ECE2}
+header{background:var(--bar);color:var(--bar-ink)}
+header .wrap{flex-direction:row;align-items:stretch;gap:12px;padding-block:0}
+.brand{flex:none;display:flex;align-items:center;gap:10px;flex-wrap:nowrap}
+h1{font-size:20px;line-height:1;letter-spacing:.02em}
+.brand span{display:none}
+nav{flex:1;gap:0;min-width:0}
+nav button{min-height:48px;padding:12px 4px 10px;font-size:15px;white-space:nowrap;opacity:.78}
+nav button[aria-selected="true"]{opacity:1}
+@media (min-width:760px){.brand span{display:inline}}
+@media (max-width:359px){h1{font-size:17px}nav button{font-size:13.5px}header .wrap{gap:8px}}
+button,a,summary,select{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+input[type=text],textarea,select{font-size:16px;min-height:42px}
+.btn{min-height:42px}
+.btn.icon{width:42px;min-height:42px}
+details summary{min-height:40px;display:flex;align-items:center}
+.handle{width:44px;height:44px}
+.move{min-width:0;flex:1 1 110px;max-width:none}
+.task .row{flex-wrap:nowrap}
+.task .row .btn.danger{flex:none}
+.btn.icon{flex:none}
+@media (max-width:359px){.task .row{flex-wrap:wrap}}
+#arrangeHint{display:none}#arrangeBtn[aria-pressed="true"]+#arrangeHint{display:inline}
+.check{min-height:44px;cursor:pointer}.check input{width:24px;height:24px;margin:0;accent-color:var(--pine)}
+.arrangebar{top:var(--hdr,56px)}
 </style>
 </head>
 <body>
@@ -142,6 +173,7 @@ details .more{display:grid;gap:8px;margin-top:8px}
 
 <script type="module">
 const C=window.FOH_CONFIG||{}, T=window.FOH_TASKS||{};
+const setHdr=()=>document.documentElement.style.setProperty('--hdr',document.querySelector('header').offsetHeight+'px');setHdr();window.addEventListener('resize',setHdr);
 const SDK='https://www.gstatic.com/firebasejs/13.1.0/';
 const LOC=C.locationId||'';
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];

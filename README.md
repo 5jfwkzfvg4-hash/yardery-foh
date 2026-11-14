@@ -90,5 +90,7 @@ What protects the data is `firestore.rules` (published in the Firebase console),
 - `NEW-LOCATION.md` — one-page checklist for opening a new store.
 - `FOH-QR-Poster.pdf` (color) and `FOH-QR-Poster-BW.pdf` (black and white) — printable posters (Letter) with the staff link's QR code. For another store:
   `node tools/poster.mjs <store link> "<store name>"`.
+- `npm run qa` — look-and-feel check: 10 screen sizes (320 px phone to 1920 px desktop, portrait and landscape) × light/dark ×
+  staff and manager pages; flags sideways scrolling, off-screen items, small tap targets, tiny or low-contrast text, and measures speed.
 - `tests/` — automatic checks (for whoever maintains the code): `npm install`, then `npm test`
   (needs Java 11+; runs everything against Firebase's local emulator, never the real database).
