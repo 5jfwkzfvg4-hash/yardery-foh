@@ -1,5 +1,5 @@
 {
- "id": "2026-11-14-sop-additions-2",
+ "id": "2026-11-14-sop-additions-3",
  "note": "Bar-guide additions (Nov 13), SOP/memo items and outdoor heater tasks (Nov 14).",
  "ops": [
   {
@@ -297,6 +297,10 @@
      "PM Bar",
      "PM Server",
      "Food Runner"
+    ],
+    "p": true,
+    "s": [
+     "Heaters lined up next to the bar service door"
     ]
    }
   }
