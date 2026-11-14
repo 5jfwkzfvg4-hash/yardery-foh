@@ -16,7 +16,7 @@ const noCfg = cfg.replace(/firebase:\{[\s\S]*?\n  \},/, "firebase:{apiKey:'',pro
 if (testCfg === cfg || noCfg === cfg) throw new Error('config block not found');
 const server = http.createServer((q, r) => {
   const path = q.url.split('?')[0], file = path.replace(/^\/(noconfig\/)?/, '') || 'index.html';
-  if (!/^(index\.html|manage\.html|config\.js|tasks\.js|report\.js|proposals\/tasks\.json)$/.test(file)) { r.writeHead(404); return r.end(); }
+  if (!/^(index\.html|manage\.html|config\.js|tasks\.js|report\.js|reminders\.js|proposals\/tasks\.json)$/.test(file)) { r.writeHead(404); return r.end(); }
   const body = file === 'config.js' ? (path.startsWith('/noconfig/') ? noCfg : testCfg) : readFileSync(file === 'proposals/tasks.json' ? 'tests/fixtures/proposal.json' : file);
   r.writeHead(200, {'content-type': file.endsWith('.js') ? 'text/javascript' : file.endsWith('.json') ? 'application/json' : 'text/html; charset=utf-8'}); r.end(body);
 }).listen(0);
@@ -55,6 +55,12 @@ const waitPressed = (p, id, v) => p.waitForFunction(([id, v]) => document.getEle
 await t('first visit asks for a first name', async () => { ok(await pa.isVisible('#setup'), 'setup hidden'); });
 await pa.fill('#firstName', 'ana'); await pa.click('#setupForm .go');
 await pb.fill('#firstName', 'Ben'); await pb.click('#setupForm .go');
+await t('Home: duty reminder, health code of the day with Food Code link, standard of the day', async () => {
+  await pa.click('#tab-home');
+  ok((await pa.textContent('#duty')).includes('Bartender on duty'), 'duty');
+  const rem = await pa.textContent('#reminders'); ok(rem.includes('Health code') && rem.includes('Standard'), rem);
+  ok((await pa.getAttribute('#reminders a', 'href')).includes('Food-Code'), 'no code link');
+});
 await t('Home shows the service standards card', async () => {
   await pa.click('#tab-home'); const txt = await pa.textContent('#standards');
   ok(await pa.isVisible('#standards') && txt.includes('See it, clean it') && txt.includes('No guest refills their own drink'), txt);
@@ -138,6 +144,41 @@ await t('photo task: Cancel leaves it unchecked', async () => {
   await pa.click('#chk-c-sinks'); await pa.waitForSelector('#cam:not([hidden])'); await pa.click('#camClose');
   await pa.waitForSelector('#cam', {state: 'hidden'}); ok(await pressed(pa, 'c-sinks') === 'false', 'checked without a photo');
 });
+await t('Home: team progress shows each person with their share of today\'s tasks', async () => {
+  await pb.click('#tab-home'); await pb.waitForFunction(() => /Ana[\s\S]*%/.test(document.getElementById('team').textContent), null, {timeout: 6000});
+  const txt = await pb.textContent('#team'); ok(/Ana\d+% · \d+ task/.test(txt.replace(/\s+/g, '')) || /Ana.*%/.test(txt), txt);
+});
+await t('Home: delivery and party reminders from the calendar board, and the next 7 days', async () => {
+  const H = {Authorization: 'Bearer owner', 'content-type': 'application/json'};
+  const day = await pa.evaluate(() => document.getElementById('todayTitle').textContent);
+  const iso = TUE, next = new Date(Date.parse(TUE + 'T12:00:00Z') + 2 * 864e5).toISOString().slice(0, 10);
+  const arr = v => ({arrayValue: {values: v}}), m = f => ({mapValue: {fields: f}}), str = v => ({stringValue: v});
+  const body = {fields: {deliveries: arr([m({day: str(iso), label: str('Wayne Densch (beer)')}), m({day: str(next), label: str('Breakthru Beverage (liquor/wine)')})]),
+    events: arr([m({day: str(iso), time: str('5:00–8:00 PM'), what: str('30th birthday'), guests: {integerValue: '20'}, pkg: str('Standard package')})]),
+    holidays: arr([]), missed: arr([m({id: str('o-tvs'), t: str('TVs on, sports playing'), done: {integerValue: '2'}, of: {integerValue: '6'}})])}};
+  const r = await fetch('http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/board/current', {method: 'PATCH', headers: H, body: JSON.stringify(body)});
+  ok(r.ok, 'seed ' + r.status);
+  await pa.click('#tab-home');
+  await pa.waitForFunction(() => document.getElementById('reminders').textContent.includes('Wayne Densch (beer) today'), null, {timeout: 6000});
+  const rem = await pa.textContent('#reminders');
+  ok(rem.includes('Nothing on the kegs') && rem.includes('30th birthday') && rem.includes('TVs on, sports playing') && rem.includes('2 of the last 6'), rem);
+  ok(await pa.isVisible('#soonCard') && (await pa.textContent('#soonList')).includes('Breakthru Beverage'), 'coming up');
+  await pa.screenshot({path: 'tests/shots/phone-home.png', fullPage: true});
+});
+await t('Opening the site: Home first; within 2 hours it resumes where you left off; after 2 hours, Home again', async () => {
+  const ctx = await browser.newContext(phone); await ctx.route(/fonts\.|gstatic/, r => r.abort());
+  await ctx.addInitScript(() => { try { localStorage.setItem('foh-name', 'Eve'); } catch (e) {} });
+  const p = await ctx.newPage(); await p.clock.setFixedTime(new Date(OPEN_TIME));
+  await p.goto(URL + 'noconfig/#daily'); await p.waitForTimeout(200);
+  ok(await p.isVisible('#home') && await p.isHidden('#daily'), 'first open did not land on Home');
+  await p.click('#tab-weekly'); await p.evaluate(() => window.scrollTo(0, 400)); await p.waitForTimeout(400);
+  await p.clock.setFixedTime(new Date(Date.parse(OPEN_TIME) + 90 * 60e3)); await p.reload(); await p.waitForTimeout(300);
+  ok(await p.isVisible('#weekly'), 'did not resume within 2 hours');
+  ok(await p.evaluate(() => window.scrollY) > 100, 'scroll not restored');
+  await p.clock.setFixedTime(new Date(Date.parse(OPEN_TIME) + 125 * 60e3)); await p.reload(); await p.waitForTimeout(300);
+  ok(await p.isVisible('#home'), 'did not go Home after 2 hours');
+  await ctx.close();
+});
 await t('a manager can uncheck anyone', async () => {
   const H = {Authorization: 'Bearer owner', 'content-type': 'application/json'};
   const base = 'http://127.0.0.1:8080/v1/projects/demo-yardery/databases/(default)/documents/locations/sanford/';
@@ -145,7 +186,7 @@ await t('a manager can uncheck anyone', async () => {
   const ben = devs.documents.find(d => d.fields.name.stringValue === 'Ben').name.split('/').pop();
   await fetch(base + 'managers?documentId=' + ben, {method: 'POST', headers: H, body: JSON.stringify({fields: {name: {stringValue: 'Ben'}}})});
   await pb.waitForTimeout(800);
-  await pb.click('#chk-o-taps'); await waitPressed(pa, 'o-taps', 'false');
+  await pb.click('#tab-daily'); await pb.click('#chk-o-taps'); await waitPressed(pa, 'o-taps', 'false');
 });
 await t('staff page shows the Manager page link only on manager phones', async () => {
   await pb.reload(); await pb.click('#tab-home'); await pb.waitForSelector('.mgr-home a.mgr:not([hidden])', {timeout: 8000});
@@ -244,7 +285,7 @@ async function at(iso) {
   const ctx = await browser.newContext(phone); await ctx.route(/fonts\.|gstatic/, r => r.abort());
   await ctx.addInitScript(() => { try { localStorage.setItem('foh-name', 'Dee'); } catch (e) {} });
   const p = await ctx.newPage(); p.on('pageerror', e => errors.push('at: ' + e.message));
-  await p.clock.setFixedTime(new Date(iso)); await p.goto(URL + 'noconfig/#daily'); await p.waitForTimeout(300); return p;
+  await p.clock.setFixedTime(new Date(iso)); await p.goto(URL + 'noconfig/#daily'); await p.waitForTimeout(300); await p.click('#tab-daily'); return p;
 }
 await t('before closing: no countdown', async () => { const p = await at('2026-11-04T01:59:00Z'); ok(await p.isHidden('#lockbar'), 'bar shown'); await p.context().close(); });
 await t('10:10 PM Tuesday: countdown shows 20:00 left', async () => {

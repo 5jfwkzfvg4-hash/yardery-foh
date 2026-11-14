@@ -5,15 +5,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>FOH</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<script src="config.js"></script>
-<script src="tasks.js"></script>
-<script src="report.js"></script>
+<script src="config.js" defer></script>
+<script src="tasks.js" defer></script>
+<script src="report.js" defer></script>
+<script src="reminders.js" defer></script>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js">
 <meta name="format-detection" content="telephone=no">
 <meta property="og:title" content="FOH">
 <meta property="og:description" content="The Yardery FOH daily and weekly cleaning checklists">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* Layout: one narrow column; sticky header with Daily/Weekly tabs; grouped task lists with tap-to-check marked with the employee's first name (set once per device) */
 :root{
@@ -96,6 +102,22 @@ a.tag{color:var(--pine);border-color:currentColor}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100% - 32px)}
 .toast.show{opacity:1}
 .mgr-home{margin:14px 0 0}
+.duty{margin:0 0 14px;font-weight:600}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin:0 0 14px}
+.card h2{font-size:20px}.card h3{font:700 16px/1.25 var(--display);margin:0 0 8px;color:var(--pine)}
+.rem{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.rem li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px}
+.rem .k{flex:none;font:700 11px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-top:1px;width:104px;text-align:center}
+.rem .k.urgent{background:var(--amber);border-color:var(--amber);color:#1E241A}
+.rem .k.miss{color:var(--warn);border-color:currentColor}
+.rem a{color:var(--pine)}
+.team{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.team li{display:grid;grid-template-columns:minmax(70px,auto) 1fr auto;gap:10px;align-items:center;font-size:14px}
+.team .nm{font-weight:700}.team .tb{height:8px;border-radius:99px;background:var(--line);overflow:hidden}.team .tb i{display:block;height:100%;background:var(--done)}
+.team .pc{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.soon{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.soon li{font-size:14px}.soon .dd{font-weight:700;display:block}.soon .it{display:block;color:var(--ink)}.soon .tent{color:var(--muted)}
+.standards{margin-top:0}
 .standards ul{margin:8px 0 0;padding-left:20px}.standards li{margin:4px 0}.std-src{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
 .lockbar{position:sticky;top:calc(env(safe-area-inset-top,0px) + var(--hdr,98px) + 6px);z-index:4;margin:0 0 12px;padding:10px 14px;border-radius:12px;font:600 14.5px/1.35 var(--body);background:var(--panel);border:1px solid var(--line);color:var(--ink)}
 .lockbar.soon{background:var(--amber);border-color:var(--amber);color:#1E241A}
@@ -145,6 +167,9 @@ a.tag{color:var(--pine);border-color:currentColor}
   </div>
 
   <section id="home">
+    <div class="note duty" id="duty"></div>
+    <div class="card" id="todayCard"><h2 id="todayTitle">Today</h2><ul class="rem" id="reminders"></ul></div>
+    <h3 class="grp" style="margin-top:4px">Progress</h3>
     <div class="home">
       <button type="button" class="sum" id="sumDaily" data-go="daily">
         <span class="lbl">Daily</span>
@@ -160,6 +185,8 @@ a.tag{color:var(--pine);border-color:currentColor}
         <span class="pct" id="sumMonthPct">0%</span>
       </button>
     </div>
+    <div class="card" id="teamCard" style="margin-top:14px"><h3>Team today</h3><ul class="team" id="team"></ul></div>
+    <div class="card" id="soonCard" hidden><h3>Coming up: next 7 days</h3><ul class="soon" id="soonList"></ul></div>
     <div class="note standards" id="standards" hidden><strong id="stdTitle"></strong><ul id="stdList"></ul><p class="std-src" id="stdSrc"></p></div>
     <p class="mgr-home"><a class="linkbtn mgr" href="manage.html" hidden>Manager page: edit and assign tasks</a></p>
   </section>
@@ -363,6 +390,62 @@ function renderHome(){
   $('tab-monthly').hidden=$('sumMonthly').hidden=!hasM;
   if(hasM){$('sumMonthLbl').textContent='Monthly · '+shift.toLocaleDateString(undefined,{timeZone:'UTC',month:'long'});
     $('sumMonthPct').textContent=closed?'Closed':Math.round(mItems.filter(([id])=>live.month[id]).length/mItems.length*100)+'%'}
+  renderToday(closed);renderTeam(closed);renderSoon();
+}
+/* ===== Home: reminders, team progress, coming up ===== */
+const REM=window.FOH_REMINDERS||{};
+let BOARD=null; // locations/{id}/board/current, written by the nightly script from Clay's calendars
+const dayNum=()=>Math.floor(Date.parse(DAY+'T12:00:00Z')/864e5);
+const localHour=()=>new Date(Date.now()+tzOff(Date.now())).getUTCHours();
+function remItem(kind,cls,parts){const li=el('li');li.appendChild(el('span','k'+(cls?' '+cls:''),kind));const t=el('span');parts.forEach(p=>t.append(p));li.appendChild(t);return li}
+function renderToday(closed){
+  $('duty').textContent=REM.duty||'';$('duty').hidden=!REM.duty;
+  $('todayTitle').textContent='Today · '+shift.toLocaleDateString(undefined,{timeZone:'UTC',weekday:'long',month:'long',day:'numeric'});
+  const L=[],st=dayState();
+  if(closed)L.push(remItem('Closed',null,['We’re closed '+DAYNAMES[DOW]+'s. No checklists today.']));
+  /* deliveries today: bartender on duty puts the order away */
+  ((BOARD&&BOARD.deliveries)||[]).filter(d=>d.day===DAY).forEach(d=>L.push(remItem('Delivery','urgent',[
+    el('strong',null,d.label+(d.maybe?' (if ordered)':'')+' today. '),'Bartender on duty: put the whole order away neatly as it comes in. Nothing on the kegs, nothing on the floor.'])));
+  /* events today */
+  ((BOARD&&BOARD.events)||[]).filter(e=>e.day===DAY).forEach(e=>L.push(remItem('Party','urgent',[el('strong',null,eventLine(e)+'. '),'Set up early and keep the bar stocked for it.'])));
+  if(!closed){
+    const items=DAILY.flatMap(g=>g.items.map(([id])=>id)),open=items.filter(id=>!live.day[id]).length;
+    const amG=DAILY.find(g=>/^AM(?!\/)/i.test(g.role)),amLeft=amG?amG.items.filter(([id])=>!live.day[id]).length:0;
+    if(st==='countdown'||st==='locked'){if(open)L.push(remItem('Left open','miss',[open+' daily '+(open===1?'task was':'tasks were')+' not checked off. That’s on the PM bartender.']))}
+    else if(amG&&localHour()>=16&&amLeft)L.push(remItem('AM tasks','miss',[amLeft+' AM '+(amLeft===1?'task is':'tasks are')+' still open. They’re the PM shift’s now.']));
+    else if(open&&localHour()>=17)L.push(remItem('Open tasks',null,[open+' of '+items.length+' daily tasks still open. Bartender on duty: hand some out.']));
+  }
+  /* often missed lately (nightly script: done on fewer than half of the last 7 open days) */
+  ((BOARD&&BOARD.missed)||[]).slice(0,3).forEach(m=>L.push(remItem('Often missed','miss',[el('strong',null,m.t),' — done '+m.done+' of the last '+m.of+' open days.'])));
+  /* one health code a day */
+  const H=REM.health||[];if(H.length){const h=H[dayNum()%H.length];
+    const a=el('a',null,h.code?'Food Code '+h.code:h.law);a.href=h.url||(CODE_URL+'#search=%22'+h.code+'%22');a.target='_blank';a.rel='noopener';
+    L.push(remItem('Health code',null,[h.text+' ',a]))}
+  /* one service standard a day */
+  const S=(T.STANDARDS&&T.STANDARDS.items)||[];if(S.length)L.push(remItem('Standard',null,[S[dayNum()%S.length]]));
+  $('reminders').replaceChildren(...L);
+}
+function renderTeam(closed){
+  /* share of today's tasks (daily + today's weekly) each person checked; weekly/monthly checks count when made today */
+  const wg=WEEKLY.find(x=>x.day===DOW),total=DAILY.reduce((n,g)=>n+g.items.length,0)+(wg?wg.items.length:0),by={};
+  const add=r=>{if(r){by[r.i]=(by[r.i]||0)+1}};
+  Object.values(live.day).forEach(add);
+  Object.values(live.week).filter(r=>r.day===DAY).forEach(add);Object.values(live.month).filter(r=>r.day===DAY).forEach(add);
+  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  $('teamCard').hidden=closed;
+  $('team').replaceChildren(...(rows.length?rows.map(([n,c])=>{const li=el('li'),pc=total?Math.round(c/total*100):0,b=el('span','tb'),i=el('i');i.style.width=Math.min(100,pc)+'%';b.appendChild(i);
+    li.append(el('span','nm',n),b,el('span','pc',pc+'% · '+c+(c===1?' task':' tasks')));return li}):[el('li','meta','No one has checked anything off yet today.')]));
+}
+function eventLine(e){return [e.time,e.what||'Party',e.guests?e.guests+' guests':'',e.pkg].filter(Boolean).join(' · ')+(e.tentative?' (tentative)':'')}
+function renderSoon(){
+  const B=BOARD||{},end=R.addDays(DAY,7),rows={};
+  const put=(d,txt,cls)=>{if(d<DAY||d>end)return;(rows[d]=rows[d]||[]).push([txt,cls])};
+  (B.events||[]).forEach(e=>put(e.day,'🎉 '+eventLine(e),e.tentative?'tent':''));
+  (B.deliveries||[]).forEach(d=>put(d.day,'🚚 '+d.label+(d.maybe?' (if ordered)':'')));
+  (B.holidays||[]).forEach(h=>put(h.day,'📅 '+h.name));
+  const days=Object.keys(rows).sort();$('soonCard').hidden=!days.length;
+  $('soonList').replaceChildren(...days.map(d=>{const li=el('li');li.appendChild(el('span','dd',d===DAY?'Today':R.shortDate(d).replace(/\/\d{4}$/,'')));
+    rows[d].forEach(([t,c])=>li.appendChild(el('span','it'+(c?' '+c:''),t)));return li}));
 }
 Object.keys(scopes).forEach(sc=>{
   build(sc);
@@ -458,7 +541,7 @@ function listen(sc){
   live[sc]={};build(sc);
   unsub[sc]=fb.onSnapshot(checksCol(sc),snap=>{
     const o={};
-    snap.forEach(d=>{const x=d.data({serverTimestamps:'estimate'});const ts=x.tappedAt||x.at;o[d.id]={i:x.name,uid:x.uid,t:ts&&ts.toMillis?ts.toMillis():Date.now(),photos:Array.isArray(x.photos)?x.photos:[],slots:Array.isArray(x.slots)?x.slots:[]}});
+    snap.forEach(d=>{const x=d.data({serverTimestamps:'estimate'});const ts=x.tappedAt||x.at;o[d.id]={i:x.name,uid:x.uid,day:x.day||'',t:ts&&ts.toMillis?ts.toMillis():Date.now(),photos:Array.isArray(x.photos)?x.photos:[],slots:Array.isArray(x.slots)?x.slots:[]}});
     live[sc]=o;build(sc);
   },e=>{fbMsg='Can’t load the team’s checks ('+e.code+'). Reload the page.';toast(fbMsg)});
 }
@@ -497,6 +580,7 @@ async function connect(){
       if(UID===user.uid)return;
       UID=user.uid;fbMsg='Connecting to the team list… try again in a moment.';
       listen('day');listen('week');listen('month');listenLock();
+      fb.onSnapshot(fb.doc(db,'locations',LOC,'board','current'),s=>{BOARD=s.exists()?s.data():null;renderHome()},()=>{});
       fb.onSnapshot(fb.doc(db,'locations',LOC,'config','tasks'),s=>{if(s.exists())applyTasks(s.data())},()=>{});
       const listed=Array.isArray(C.managers)&&C.managers.includes(UID);isManager=listed;
       showMgr();
@@ -535,7 +619,7 @@ function listenLock(){if(unLock)unLock();lockDoc=false;
 setInterval(tick,1000);
 
 /* New day at the cutoff hour, new week on Monday: switch sheets without a reload */
-function rollover(){if(setDates()){lockDoc=false;lastState='';if(fb&&UID){listen('day');listen('week');listen('month');listenLock()}else{build('day');build('week');build('month')}tick()}}
+function rollover(){if(setDates()){lockDoc=false;lastState='';try{landing()}catch(e){}if(fb&&UID){listen('day');listen('week');listen('month');listenLock()}else{build('day');build('week');build('month')}tick()}}
 setInterval(rollover,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)rollover()});
 
 function net(){$('offline').hidden=navigator.onLine}
@@ -546,7 +630,24 @@ function show(id){tabs.forEach(x=>x.setAttribute('aria-selected',String(x.datase
 tabs.forEach(t=>t.addEventListener('click',()=>{show(t.dataset.tab);try{history.replaceState(null,'','#'+t.dataset.tab)}catch(e){}}));
 function route(){const h=(location.hash||'').slice(1);if(h==='home'||h==='daily'||h==='weekly'||h==='monthly')show(h)}
 document.querySelectorAll('.sum').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);try{history.replaceState(null,'','#'+b.dataset.go)}catch(e){}}));
-route();window.addEventListener('hashchange',route);
+/* Opening the site: Home the first time each business day and again whenever 2 hours have passed since Home was
+   last shown this way; otherwise resume the tab and scroll position where this phone left off. */
+const NAV_KEY='foh-nav',NAV_MS=2*3600e3;
+const navGet=()=>{try{return JSON.parse(localStorage.getItem(NAV_KEY)||'{}')}catch(e){return {}}};
+const navSet=o=>{try{localStorage.setItem(NAV_KEY,JSON.stringify(Object.assign(navGet(),o)))}catch(e){}};
+function curTab(){const t=tabs.find(x=>x.getAttribute('aria-selected')==='true');return t?t.dataset.tab:'home'}
+function landing(){
+  const n=navGet(),now=Date.now();
+  if(n.day!==DAY||!n.homeAt||now-n.homeAt>=NAV_MS){show('home');try{history.replaceState(null,'','#home')}catch(e){}navSet({day:DAY,homeAt:now,tab:'home',y:0});return}
+  const t=['home','daily','weekly','monthly'].includes(n.tab)?n.tab:'home';
+  if(t==='monthly'&&$('tab-monthly').hidden){show('home');return}
+  show(t);try{history.replaceState(null,'','#'+t)}catch(e){}
+  if(n.y)requestAnimationFrame(()=>window.scrollTo(0,n.y));
+}
+let navT;window.addEventListener('scroll',()=>{clearTimeout(navT);navT=setTimeout(()=>navSet({tab:curTab(),y:Math.round(window.scrollY),day:DAY}),250)},{passive:true});
+tabs.concat([...document.querySelectorAll('.sum')]).forEach(b=>b.addEventListener('click',()=>navSet({tab:curTab(),y:0,day:DAY})));
+document.addEventListener('visibilitychange',()=>{if(document.hidden)navSet({tab:curTab(),y:Math.round(window.scrollY),day:DAY});else{const n=navGet();if(n.day!==DAY||Date.now()-(n.homeAt||0)>=NAV_MS)landing()}});
+landing();window.addEventListener('hashchange',route);
 tick();connect();
 </script>
 

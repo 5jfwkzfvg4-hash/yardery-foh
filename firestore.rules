@@ -23,6 +23,10 @@ service cloud.firestore {
                     '1hxYPl0wQnbl1KgvV9nJrCEA6y82']   // ClayA16
       };
     }
+    // The nightly PDF script's own sign-in (its setup log shows the id; add it here and publish).
+    function scriptIds() {
+      return [];
+    }
     function isManager(loc) {
       return request.auth.uid in managerIds().get(loc, [])
         || exists(/databases/$(database)/documents/locations/$(loc)/managers/$(request.auth.uid));
@@ -133,6 +137,13 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['at']) && request.resource.data.at == request.time
           && request.time >= lockTs(day);
         allow update, delete: if false;
+      }
+
+      // Home page board (deliveries, parties, often-missed tasks), written by the nightly script from Clay's calendars.
+      // Staff phones read it; only the script's own sign-in (scriptIds) or a manager can write it.
+      match /board/{doc} {
+        allow read: if signedIn();
+        allow write: if signedIn() && (request.auth.uid in scriptIds() || isManager(loc));
       }
 
       // Each phone's first name, tied to its anonymous user id (so it is remembered and managers can find a device).

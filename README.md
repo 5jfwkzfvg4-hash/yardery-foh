@@ -5,6 +5,18 @@
 One page (`index.html`), plain HTML/CSS/JavaScript, no build step. Checks are shared live between every phone
 through Firebase (Cloud Firestore, free Spark plan, anonymous sign-in, so staff need no passwords).
 
+## Staff Home page
+- Opens on Home the first time each business day, and again whenever 2 hours have passed since; otherwise it
+  resumes the tab and spot where that phone left off.
+- **Top:** who delegates (text in `reminders.js` → `duty`).
+- **Today:** beer/liquor deliveries today (bartender puts the order away), parties today, live "AM tasks left" (after
+  4 PM) and "left open" (at close), the tasks most often missed over the last 7 open days, one Food Code tip a day
+  (`reminders.js` → `health`, rotates by date) and one service standard a day (`tasks.js` → `STANDARDS`).
+- **Progress:** Daily / Weekly / Monthly boxes, and **Team today**: each person's share of today's tasks.
+- **Coming up:** parties, deliveries and holidays for the next 7 days.
+- Deliveries, parties, holidays and often-missed come from the nightly script (`locations/{id}/board/current`); the
+  script's sign-in must be listed in `firestore.rules` → `scriptIds()`.
+
 ## Edit tasks: the manager page
 **https://5jfwkzfvg4-hash.github.io/yardery-foh/manage.html**. Manager phones also see a **Manager page** link on the staff page (under the Home boxes, and next to "Not you?"); staff phones never see it.
 - **Daily / Weekly tabs:** change a task's wording or details, ↑ ↓ to reorder, **Move to…** another section or day,
@@ -73,6 +85,7 @@ What protects the data is `firestore.rules` (published in the Firebase console),
 - `config.js` — **the location settings** (name, id, time zone, cutoff hour, Firebase, managers). The only file a new store changes.
 - `index.html` — the staff page. `manage.html` — the manager page (task editor).
 - `tasks.js` — the built-in task lists (used until the first Save on the manager page).
+- `reminders.js` — the Home page duty message and daily Food Code tips.
 - `report.js` — closing schedule logic and the nightly PDF layout (shared by the staff page and the script).
 - `apps-script/Code.gs` — the nightly PDF script (runs in Google Apps Script; see `FOH-NIGHTLY-PDF.md`).
 - `firestore.rules` — the security rules (paste into Firebase → Firestore → Rules → Publish whenever this file changes).

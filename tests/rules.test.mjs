@@ -68,6 +68,9 @@ await t('oversized photo rejected', assertFails(setDoc(doc(A, 'locations/sanford
 await t('monthly check on a day in that month works', assertSucceeds(setDoc(doc(A, 'locations/sanford/months/2026-11-01/checks/m-walls'), check('uidA', 'm-walls'))));
 await t('monthly check must be for a day in that month', assertFails(setDoc(doc(A, 'locations/sanford/months/2026-10-01/checks/m-tops'), check('uidA', 'm-tops'))));
 await t('a manager can save a monthly list', assertSucceeds(setDoc(doc(L, 'locations/sanford/config/tasks'), tasks('TjGZ7fcbmAgo4y2skvQPfuH4fJB2', {monthly: [{role: 'Monthly', note: '', day: null, items: []}]}))));
+await t('staff can read the Home board', assertSucceeds(getDoc(doc(A, 'locations/sanford/board/current'))));
+await t('staff cannot write the Home board', assertFails(setDoc(doc(A, 'locations/sanford/board/current'), {missed: []})));
+await t('a manager can write the Home board', assertSucceeds(setDoc(doc(L, 'locations/sanford/board/current'), {missed: []})));
 // closing lock
 const W = 'locations/sanford/days/2026-10-28/checks/';   // a Wednesday, already past
 const wk = (task, day) => check('uidA', task, {day});

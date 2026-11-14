@@ -7,6 +7,10 @@
      3. adds "Cleaning checklist for <date>" and the PDF to the end of Clay's draft "Yardery Daily Recap — <date>",
         or, if there's no such draft by 5 AM, creates that draft with just the line and the PDF, addressed like the
         latest "Yardery Daily Recap" email in the inbox (no addresses are stored in this public code).
+   4. keeps the staff Home page's board up to date (every 30 minutes): beer/liquor deliveries from this account's
+      calendar (all-day "🚚 … delivery" events), parties from the store's booking calendar (the one whose address
+      starts with the locationId, e.g. sanford@…; time, guest count, occasion and package only, never customer
+      names, contacts or prices), US holidays, and the tasks most often missed over the last 7 open days.
    It never sends email. The schedule, task lists and PDF layout come from the live site (config.js, tasks.js,
    report.js), so they stay in step with the staff page without editing this script.
    Setup: open the project, choose "setup" and Run (see FOH-NIGHTLY-PDF.md). */
@@ -15,6 +19,7 @@ var SITE = 'https://5jfwkzfvg4-hash.github.io/yardery-foh/';
 var FOLDER_ID = '1tZaB6237HVKR-he2SdaktLjWY45LyHsc';   // Drive: The Yardery — Clay / 11 FOH Cleaning Checklists
 var AUTH_URL = 'https://identitytoolkit.googleapis.com/v1/';
 var FIRESTORE_URL = 'https://firestore.googleapis.com/v1/';
+var TOKEN_URL = 'https://securetoken.googleapis.com/v1/';
 
 /* Run once: starts the 5-minute timer. Only days from today on are archived. */
 function setup() {
@@ -23,7 +28,9 @@ function setup() {
   var S = loadSite_(), off = offsetFn_(S.config);
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty('since')) props.setProperty('since', S.report.businessDay(now_(), S.config, off));
+  var bot = botId_(S.config);
   Logger.log('FOH nightly PDF is on. Archiving business days from ' + props.getProperty('since') + '.');
+  Logger.log('Home page board ID: ' + bot + '  (send this ID to Claude once, so it can be allowed to update the Home page)');
   tick();
 }
 
@@ -50,12 +57,14 @@ function tick() {
       if (!props.getProperty('pdf:' + day)) {
         var file = makePdf_(S, day, off, {lockAt: lockAt});
         props.setProperty('pdf:' + day, file.getId());
+        props.setProperty('boardAt', '0');   // refresh the Home board with the new "often missed" list
       }
       if (!props.getProperty('mail:' + day)) {
         var done = mail_(S, day, off, now, DriveApp.getFileById(props.getProperty('pdf:' + day)));
         if (done) props.setProperty('mail:' + day, done);
       }
     });
+    try { board_(S, off, now, props); } catch (e) { Logger.log('Home board not updated: ' + e); props.setProperty('boardError', String(e)); }
   } finally {
     lock.releaseLock();
   }
@@ -82,6 +91,7 @@ function makePdf_(S, day, off, opt) {
         });
       });
     });
+    if (!opt.test) missed_(auth, base, day, tasks, R, C);
     var html = R.build({day: day, location: C.locationName || 'The Yardery', tasks: tasks, dayChecks: dayChecks,
       weekChecks: weekChecks, monthChecks: monthChecks, photos: photos, lockedAt: opt.lockAt, generatedAt: now_()}, off);
     var name = 'FOH Cleaning Checklist — ' + R.shortDate(day) + (opt.test ? ' (test)' : '') + '.pdf';
@@ -98,6 +108,106 @@ function checks_(docs) {
     out[d.id] = {name: x.name || '', at: t ? Date.parse(t) : 0, photos: x.photos || [], slots: x.slots || [], day: x.day || ''};
   });
   return out;
+}
+
+/* tasks done on fewer than half of the last 7 open days (up to and including `day`), worst first */
+function missed_(auth, base, day, tasks, R, C) {
+  var days = [], d = day;
+  for (var i = 0; days.length < 7 && i < 14; i++, d = R.addDays(d, -1)) if (!R.isClosed(d, C)) days.push(d);
+  var count = {};
+  days.forEach(function (x) { fsList_(auth, base + 'days/' + x + '/checks').forEach(function (c) { count[c.id] = (count[c.id] || 0) + 1; }); });
+  var out = [];
+  (tasks.daily || []).forEach(function (g) { (g.items || []).forEach(function (it) {
+    var n = count[it.id] || 0; if (n / days.length < 0.5) out.push({id: it.id, t: it.t, done: n, of: days.length}); }); });
+  out.sort(function (a, b) { return a.done - b.done; });
+  PropertiesService.getScriptProperties().setProperty('missed', JSON.stringify(days.length >= 3 ? out.slice(0, 5) : []));
+}
+
+/* ---------- Home page board ---------- */
+function board_(S, off, now, props) {
+  var C = S.config, R = S.report, today = R.businessDay(now, C, off);
+  if (now - Number(props.getProperty('boardAt') || 0) < 30 * 60000 && props.getProperty('boardDay') === today) return;
+  var start = new Date(R.wallToMs(today, 0, off)), end = new Date(R.wallToMs(R.addDays(today, 8), 0, off));
+  var data = {deliveries: deliveries_(start, end, C), events: events_(start, end, C), holidays: holidays_(start, end),
+    missed: JSON.parse(props.getProperty('missed') || '[]')};
+  var json = JSON.stringify(data);
+  if (json !== props.getProperty('boardJson')) {
+    var token = botToken_(C), base = 'projects/' + C.firebase.projectId + '/databases/(default)/documents/locations/' + C.locationId + '/';
+    var res = UrlFetchApp.fetch(FIRESTORE_URL + base + 'board/current', {method: 'patch', contentType: 'application/json',
+      headers: {Authorization: 'Bearer ' + token}, muteHttpExceptions: true,
+      payload: JSON.stringify({fields: toFs_(Object.assign({updatedAt: new Date(now)}, data)).mapValue.fields})});
+    if (res.getResponseCode() !== 200) throw new Error('board write ' + res.getResponseCode() + ' (is the board ID in firestore.rules scriptIds()?)');
+    props.setProperty('boardJson', json);
+  }
+  props.setProperty('boardAt', String(now)); props.setProperty('boardDay', today); props.deleteProperty('boardError');
+}
+function dayOf_(ev, tz) {
+  return ev.isAllDayEvent() ? Utilities.formatDate(ev.getAllDayStartDate(), Session.getScriptTimeZone(), 'yyyy-MM-dd')
+                            : Utilities.formatDate(ev.getStartTime(), tz, 'yyyy-MM-dd');
+}
+function deliveries_(start, end, C) {   // this account's calendar: all-day "🚚 … (beer) / (liquor/wine) …" events
+  var tz = C.timeZone || 'America/New_York';
+  return CalendarApp.getDefaultCalendar().getEvents(start, end).filter(function (e) {
+    var t = e.getTitle(); return t.indexOf('🚚') >= 0 && /beer|liquor|wine/i.test(t);
+  }).map(function (e) {
+    var t = e.getTitle();
+    return {day: dayOf_(e, tz), label: t.replace('🚚', '').replace(/,?\s*if ordered/i, '').replace(/\s+delivery/i, '').replace(/\s+—.*$/, '').trim(),
+      maybe: /if ordered/i.test(t)};
+  });
+}
+function events_(start, end, C) {   // the store's booking calendar (address starts with the locationId)
+  var tz = C.timeZone || 'America/New_York', out = [];
+  CalendarApp.getAllCalendars().filter(function (c) { return c.getId().split('@')[0].toLowerCase() === C.locationId; }).forEach(function (cal) {
+    cal.getEvents(start, end).forEach(function (e) {
+      var d = e.getDescription() || '', g = d.match(/Guest count:\s*(\d+)/i);
+      if (!g) return;   // only bookings; never show other calendar titles (they can be customer names)
+      var occ = (d.match(/Occasion:\s*([^\n]+)/i) || [])[1] || '', names = e.getTitle().toLowerCase().split(/\s+/);
+      occ = occ.trim(); if (names.some(function (n) { return n.length > 2 && occ.toLowerCase().indexOf(n) >= 0; })) occ = '';
+      var tl = d.match(/(\d{1,2}:\d{2})\s*([AP]M)\s*to\s*(\d{1,2}:\d{2})\s*([AP]M)/i), time;
+      if (tl) time = tl[1] + (tl[2].toUpperCase() === tl[4].toUpperCase() ? '' : ' ' + tl[2].toUpperCase()) + '–' + tl[3] + ' ' + tl[4].toUpperCase();
+      else time = Utilities.formatDate(e.getStartTime(), tz, 'h:mm a');
+      var pkg = (d.match(/(Standard|Deluxe|Taco Bar)\s+Package/i) || [])[1];
+      out.push({day: dayOf_(e, tz), time: time, guests: Number(g[1]), what: occ.slice(0, 60), pkg: pkg ? pkg + ' package' : '',
+        tentative: /Catering order status:\s*Tentative/i.test(d)});
+    });
+  });
+  return out.sort(function (a, b) { return (a.day + a.time) < (b.day + b.time) ? -1 : 1; });
+}
+function holidays_(start, end) {
+  var cal = CalendarApp.getCalendarById('en.usa#holiday@group.v.calendar.google.com');
+  if (!cal) return [];
+  return cal.getEvents(start, end).map(function (e) { return {day: dayOf_(e, 'America/New_York'), name: e.getTitle()}; });
+}
+/* the script's own permanent sign-in, used only to write the Home board */
+function botId_(C) {
+  var props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('botRefresh')) {
+    var res = UrlFetchApp.fetch(AUTH_URL + 'accounts:signUp?key=' + C.firebase.apiKey,
+      {method: 'post', contentType: 'application/json', payload: JSON.stringify({returnSecureToken: true}), muteHttpExceptions: true});
+    var j = JSON.parse(res.getContentText());
+    if (!j.refreshToken) throw new Error('Firebase sign-in failed: ' + res.getContentText());
+    props.setProperty('botRefresh', j.refreshToken); props.setProperty('botId', j.localId);
+  }
+  return props.getProperty('botId');
+}
+function botToken_(C) {
+  botId_(C);
+  var props = PropertiesService.getScriptProperties();
+  var res = UrlFetchApp.fetch(TOKEN_URL + 'token?key=' + C.firebase.apiKey, {method: 'post', contentType: 'application/x-www-form-urlencoded',
+    payload: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(props.getProperty('botRefresh')), muteHttpExceptions: true});
+  var j = JSON.parse(res.getContentText());
+  if (!j.id_token) throw new Error('board sign-in failed: ' + res.getContentText());
+  if (j.refresh_token) props.setProperty('botRefresh', j.refresh_token);
+  return j.id_token;
+}
+function toFs_(v) {
+  if (v === null || v === undefined) return {nullValue: null};
+  if (v instanceof Date) return {timestampValue: v.toISOString()};
+  if (Array.isArray(v)) return {arrayValue: {values: v.map(toFs_)}};
+  if (typeof v === 'boolean') return {booleanValue: v};
+  if (typeof v === 'number') return Number.isInteger(v) ? {integerValue: String(v)} : {doubleValue: v};
+  if (typeof v === 'object') { var f = {}; Object.keys(v).forEach(function (k) { f[k] = toFs_(v[k]); }); return {mapValue: {fields: f}}; }
+  return {stringValue: String(v)};
 }
 
 /* ---------- Email draft (never sent) ---------- */
