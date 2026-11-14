@@ -6,6 +6,12 @@
 window.FOH_REMINDERS = {
   duty: 'Bartender on duty: hand out checklist tasks to servers and food runners when it’s slow. ' +
         'AM tasks not done by 4 PM go to the PM shift. Anything not done at close is the PM bartender’s.',
+  /* Standing reminders: shown every day in the Today card, in this order, until removed.
+     tag: the label on the left; style: 'urgent' (amber), 'miss' (red) or '' (plain). */
+  notes: [
+    {tag: 'Reminder', style: 'urgent', text: 'Change the sanitizer water and rag every 2 hours.'},
+    {tag: 'Bathrooms', style: 'miss', text: 'Bathrooms have not been kept up. Clean them thoroughly every night, and check, touch up and restock them throughout the day.'}
+  ],
   health: [
     {code: '2-301.14', text: 'Wash your hands after touching your face, hair, phone, money, trash or dirty dishes, and before touching ice, garnishes or clean glasses.'},
     {code: '2-301.12', text: 'Handwashing takes at least 20 seconds with soap and warm water. Dry with a paper towel.'},

@@ -421,6 +421,8 @@ function renderToday(closed){
     else if(amG&&localHour()>=16&&amLeft)L.push(remItem('AM tasks','miss',[amLeft+' AM '+(amLeft===1?'task is':'tasks are')+' still open. They’re the PM shift’s now.']));
     else if(open&&localHour()>=17)L.push(remItem('Open tasks',null,[open+' of '+items.length+' daily tasks still open. Bartender on duty: hand some out.']));
   }
+  /* standing reminders (reminders.js notes) */
+  (REM.notes||[]).forEach(n=>{if(n&&n.text)L.push(remItem(n.tag||'Reminder',n.style||'',[n.text]))});
   /* often missed lately (nightly script: done on fewer than half of the last 7 open days) */
   ((BOARD&&BOARD.missed)||[]).slice(0,3).forEach(m=>L.push(remItem('Often missed','miss',[el('strong',null,m.t),' — done '+m.done+' of the last '+m.of+' open days.'])));
   /* one health code a day */
