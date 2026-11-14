@@ -100,8 +100,7 @@ const STANDARDS={title:'Service standards',source:'From the FOH Standards & Side
  'Bus and wipe every table the moment a guest gets up. Don\u2019t wait to be told.',
  'Pre-bus: clear plates and glassware as guests finish.',
  'Never let a guest stack their own dishes or move them to another table.',
- 'Clear menus once guests order; leave one only if they need it for drinks.',
  'See it, clean it: if you walk past a dirty table, it\u2019s yours.',
- 'No guest refills their own drink. Our cups hide the level, so check in often.',
+ 'No guest refills their own drink.',
  'End of shift: servers check out with the closing server; the closing server checks out with the closing bartender.']};
 window.FOH_TASKS={DAILY,WEEKLY,MONTHLY,SLOTS,PHOTO,STANDARDS};
